@@ -134,7 +134,7 @@ def instrument_init():
         std.write(":SENS:VOLT:CHAN2:RANG:AUTO")
         std.write(":SENS:VOLT:NPLC 18")
         std.write(":SENS:VOLT:DIG 8")
-        print(dut.query("*IDN?"));
+        print(std.query("*IDN?"));
         print("OK!\n");
     else:
         print(std.query("*IDN?"));
