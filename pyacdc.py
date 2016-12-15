@@ -131,7 +131,8 @@ def instrument_init():
         counter_init(std);
         print("OK!\n");
     elif config['Instruments']['std'] == '2182A':
-        std.write(":SENS:VOLT:CHAN2:RANG:AUTO")
+        std.write("SENS:VOLT:CHAN 2")
+        std.write(":SENS:VOLT:CHAN2:RANG:AUTO ON")
         std.write(":SENS:VOLT:NPLC 18")
         std.write(":SENS:VOLT:DIG 8")
         print(std.query("*IDN?"));
