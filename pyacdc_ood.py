@@ -102,7 +102,7 @@ class Instrumento(object):
     __metaclass__ = ABCMeta
     def __init__(self, endereco, modelo):
         self.endereco = endereco
-        self.resource = rm.open_resource("GPIB"+config['GPIB']['id']+"::"+self.endereco+"::INSTR")
+        self.gpib = rm.open_resource("GPIB"+config['GPIB']['id']+"::"+self.endereco+"::INSTR")
         self.modelo = modelo
 
 #-------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ class Chave(Instrumento):
     def print_idn(self):
         print("Comunicando com a chave no endereço "+self.endereco+".");
         print("reset");
-        self.resource.write_raw(reset);
+        self.gpib.write_raw(reset);
         print("\n\n");
         return
 
@@ -135,8 +135,11 @@ class Fonte(Instrumento):
     """
     def __init__(self, tipo):
         Instrumento.__init__(self, config['GPIB'][tipo], config['Instruments'][tipo])
+        if (tipo != 'AC') & (tipo != 'DC'):
+            raise NameError('tipo deve ser AC ou DC')
+        
         self.tipo = tipo
-        self.idn = self.resource.query("*IDN?"));
+        self.idn = self.gpib.query("*IDN?");
 
     def print_idn(self):
         print("Comunicando com fonte "+self.tipo+" no endereço "+self.endereco+".")
@@ -162,53 +165,53 @@ class Medidor(Instrumento):
         self.tipo = tipo
 
         if self.modelo == '3458A':
-            self.resource.write("OFORMAT ASCII")
-            self.resource.write("END ALWAYS")
-            self.resource.write("NPLC 8")
-            self.idn = self.resource.query("ID?"));
+            self.gpib.write("OFORMAT ASCII")
+            self.gpib.write("END ALWAYS")
+            self.gpib.write("NPLC 8")
+            self.idn = self.gpib.query("ID?");
             
         elif self.modelo == '182A':
-            self.resource.write("R0I0B1X")
-            self.resource.write("S2N1X")
-            self.resource.write("O1P2X")
+            self.gpib.write("R0I0B1X")
+            self.gpib.write("S2N1X")
+            self.gpib.write("O1P2X")
             self.idn = "Keithley 182A"
 
         elif self.modelo == '53132A':
-            self.idn = self.resource.query("*IDN?"));
-            self.resource.write("*RST")
-            self.resource.write("*CLS")
-            self.resource.write("*SRE 0")
-            self.resource.write("*ESE 0")
-            self.resource.write(":STAT:PRES")
+            self.idn = self.gpib.query("*IDN?");
+            self.gpib.write("*RST")
+            self.gpib.write("*CLS")
+            self.gpib.write("*SRE 0")
+            self.gpib.write("*ESE 0")
+            self.gpib.write(":STAT:PRES")
             # comandos para throughput máximo
-            self.resource.write(":FORMAT ASCII")
-            self.resource.write(":FUNC 'FREQ 1'")
-            self.resource.write(":EVENT1:LEVEL 0")
+            self.gpib.write(":FORMAT ASCII")
+            self.gpib.write(":FUNC 'FREQ 1'")
+            self.gpib.write(":EVENT1:LEVEL 0")
             # configura o gate size (1 s)
-            self.resource.write(":FREQ:ARM:STAR:SOUR IMM")
-            self.resource.write(":FREQ:ARM:STOP:SOUR TIM")
-            self.resource.write(":FREQ:ARM:STOP:TIM 1")
+            self.gpib.write(":FREQ:ARM:STAR:SOUR IMM")
+            self.gpib.write(":FREQ:ARM:STOP:SOUR TIM")
+            self.gpib.write(":FREQ:ARM:STOP:TIM 1")
             # configura para utilizar oscilador interno
-            self.resource.write(":ROSC:SOUR INT")
+            self.gpib.write(":ROSC:SOUR INT")
             # desativa interpolador automatico
-            self.resource.write(":DIAG:CAL:INT:AUTO OFF")
+            self.gpib.write(":DIAG:CAL:INT:AUTO OFF")
             # desativa todo o pós-processamento
-            self.resource.write(":CALC:MATH:STATE OFF")
-            self.resource.write(":CALC2:LIM:STATE OFF")
-            self.resource.write(":CALC3:AVER:STATE OFF")
-            self.resource.write(":HCOPY:CONT OFF")
-            self.resource.write("*DDT #15FETC?")
-            self.resource.write(":INIT:CONT ON")
+            self.gpib.write(":CALC:MATH:STATE OFF")
+            self.gpib.write(":CALC2:LIM:STATE OFF")
+            self.gpib.write(":CALC3:AVER:STATE OFF")
+            self.gpib.write(":HCOPY:CONT OFF")
+            self.gpib.write("*DDT #15FETC?")
+            self.gpib.write(":INIT:CONT ON")
 
         elif self.modelo == '2182A':
-            self.resource.write("SENS:CHAN 2")
-            self.resource.write(":SENS:VOLT:CHAN2:RANG:AUTO ON")
-            self.resource.write(":SENS:VOLT:NPLC 18")
-            self.resource.write(":SENS:VOLT:DIG 8")
-            self.idn = self.resource.query("*IDN?"));
+            self.gpib.write("SENS:CHAN 2")
+            self.gpib.write(":SENS:VOLT:CHAN2:RANG:AUTO ON")
+            self.gpib.write(":SENS:VOLT:NPLC 18")
+            self.gpib.write(":SENS:VOLT:DIG 8")
+            self.idn = self.gpib.query("*IDN?");
             
         else:
-            self.idn = self.resource.query("*IDN?"));
+            self.idn = self.gpib.query("*IDN?");
         
     def print_idn(self):
         if self.tipo == 'STD':
@@ -224,13 +227,13 @@ class Medidor(Instrumento):
 
     def ler_dados(self):
         if self.modelo == '182A':
-            x = self.resource.query("X")
+            x = self.gpib.query("X")
         elif self.modelo == '2182A':
-            x = self.resource.query(":FETCH?")
+            x = self.gpib.query(":FETCH?")
         elif self.modelo == '53132A':
-            x = self.resource.query(":FETCH:FREQ?")
+            x = self.gpib.query(":FETCH:FREQ?")
         elif self.modelo == '3458A':
-            x = self.resource.query("OHM 100E3")
+            x = self.gpib.query("OHM 100E3")
         return x
 
     def imprimir_dados(self, readings):
@@ -262,36 +265,39 @@ class Medicao(object):
         self.medidor_std = medidor_std
         self.medidor_dut = medidor_dut
         self.chave = chave
+
+    def inicializar(self):
         # configuração da fonte AC
-        self.fonte_ac.write("OUT +{:.6f} V".format(v_nominal));
-        self.fonte_ac.write("OUT 1000 HZ");
+        self.fonte_ac.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT 1000 HZ");
         # configuração da fonte DC
-        self.fonte_dc.write("OUT +{:.6f} V".format(v_nominal));
-        self.fonte_dc.write("OUT 0 HZ");
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_dc.gpib.write("OUT 0 HZ");
         # Entrar em OPERATE
         espera(2); # esperar 2 segundos
-        self.fonte_ac.write("*CLS");
-        self.fonte_ac.write("OPER");
-        self.fonte_dc.write("*CLS");
-        self.fonte_dc.write("OPER");
+        self.fonte_ac.gpib.write("*CLS");
+        self.fonte_ac.gpib.write("OPER");
+        self.fonte_dc.gpib.write("*CLS");
+        self.fonte_dc.gpib.write("OPER");
         espera(10);
-        self.chave.write_raw(ac);
+        self.chave.gpib.write_raw(ac);
         espera(10);
+        return
 
     def aquecimento(self, tempo):
     # executa o aquecimento, mantendo a tensão nominal aplicada pelo tempo
     # (em segundos) definido na variavel "tempo", alternando entre AC e DC
     # a cada 60 segundos
         rep = int(tempo / 120);
-        self.fonte_dc.write("OUT +{:.6f} V".format(v_nominal));
-        self.fonte_dc.write("OUT 0 HZ");
-        self.fonte_ac.write("OUT +{:.6f} V".format(v_nominal));
-        self.fonte_ac.write("OUT 1000 HZ");
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_dc.gpib.write("OUT 0 HZ");
+        self.fonte_ac.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT 1000 HZ");
 
         for i in range(1,rep):
-            self.chave.write_raw(dc);
+            self.chave.gpib.write_raw(dc);
             espera(60);
-            self.chave.write_raw(ac);
+            self.chave.gpib.write_raw(ac);
             espera(60);
         return
 
@@ -305,11 +311,11 @@ class Medicao(object):
         # variavel da constante V0 / (Vi-V0)
         self.k = []
         # aplica o valor nominal de tensão
-        self.fonte_ac.write("OUT {:.6f} V".format(v_nominal));
-        self.fonte_ac.write("OUT "+str(freq)+" HZ");
-        self.fonte_dc.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT "+str(freq)+" HZ");
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(v_nominal));
         espera(2); # espera 2 segundos
-        self.chave.write_raw(dc);
+        self.chave.gpib.write_raw(dc);
         print("Vdc nominal: +{:.6f} V".format(v_nominal))
         # aguarda pelo tempo de espera configurado
         espera(wait_time);
@@ -331,11 +337,11 @@ class Medicao(object):
                 Vi = 1.01*v_nominal;
                 self.k.append(100);
 
-            self.chave.write_raw(ac);
+            self.chave.gpib.write_raw(ac);
             espera(2); # esperar 2 segundos
-            self.fonte_dc.write("OUT +{:.6f} V".format(Vi));
+            self.fonte_dc.gpib.write("OUT +{:.6f} V".format(Vi));
             espera(2); # esperar 2 segundos
-            self.chave.write_raw(dc);
+            self.chave.gpib.write_raw(dc);
             print("Vdc nominal + 1%: +{:.6f} V".format(Vi));
             # aguarda pelo tempo de espera configurado
             espera(wait_time);
@@ -347,7 +353,7 @@ class Medicao(object):
             self.medidor_dut.imprimir_dados(dut_readings)
                 
         # cálculo do n
-        self.chave.write_raw(ac); # mantém chave em ac durante cálculo
+        self.chave.gpib.write_raw(ac); # mantém chave em ac durante cálculo
         
         if self.medidor_std.modelo == '182A':
             self.X0 = float(std_readings[0].replace('NDCV','').strip())
@@ -381,35 +387,35 @@ class Medicao(object):
 
     def equilibrio(self):
         dut_readings = []
-        self.fonte_ac.write("OUT "+str(freq)+" HZ");
-        self.fonte_dc.write("OUT {:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT "+str(freq)+" HZ");
+        self.fonte_dc.gpib.write("OUT {:.6f} V".format(v_nominal));
         espera(5) # aguarda 5 segundos antes de iniciar equilibrio
         
         # Aplica o valor nominal
-        self.chave.write_raw(dc);
+        self.chave.gpib.write_raw(dc);
         print("Vdc nominal: +{:.6f} V".format(v_nominal))
         espera(wait_time/2);
-        self.fonte_ac.write("OUT {:.6f} V".format(0.999*v_nominal));
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(0.999*v_nominal));
         espera(wait_time/2);
         dut_readings.append(self.medidor_dut.ler_dados())
         self.medidor_dut.imprimir_dados(dut_readings)
         # Aplica Vac - 0.1%
         print("Vac nominal - 0.1%: +{:.6f} V".format(0.999*v_nominal))
-        self.chave.write_raw(ac);
+        self.chave.gpib.write_raw(ac);
         espera(wait_time)
         dut_readings.append(self.medidor_dut.ler_dados())
         self.medidor_dut.imprimir_dados(dut_readings)
-        self.chave.write_raw(dc);
+        self.chave.gpib.write_raw(dc);
         espera(2);
-        self.fonte_ac.write("OUT {:.6f} V".format(1.001*v_nominal));
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(1.001*v_nominal));
         espera(2);
         # Aplica Vac + 0.1%
         print("Vac nominal + 0.1%: +{:.6f} V".format(1.001*v_nominal))
-        self.chave.write_raw(ac);
+        self.chave.gpib.write_raw(ac);
         espera(wait_time)
         dut_readings.append(self.medidor_dut.ler_dados())
         self.medidor_dut.imprimir_dados(dut_readings)
-        self.chave.write_raw(dc);
+        self.chave.gpib.write_raw(dc);
         # cálculo do equilíbrio
         yp = [0.999*v_nominal, 1.001*v_nominal]
 
@@ -436,18 +442,18 @@ class Medicao(object):
         std_readings = []
         dut_readings = []
         # configuração da fonte AC
-        self.fonte_ac.write("OUT {:.6f} V".format(self.vac_atual))
-        self.fonte_ac.write("OUT "+str(freq)+" HZ")
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(self.vac_atual))
+        self.fonte_ac.gpib.write("OUT "+str(freq)+" HZ")
         # configuração da fonte DC
-        self.fonte_dc.write("OUT +{:.6f} V".format(self.vdc_atual))
-        self.fonte_dc.write("OUT 0 HZ")
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(self.vdc_atual))
+        self.fonte_dc.gpib.write("OUT 0 HZ")
         # Iniciar medição
         espera(2); # esperar 2 segundos
         # Ciclo AC
         # testa se existem dados do último ciclo AC da medição anterior
         if (ciclo_ac == []):
             # caso negativo, medir AC normalmente
-            self.chave.write_raw(ac)
+            self.chave.gpib.write_raw(ac)
             print("Ciclo AC")
             espera(wait_time);
             # leituras
@@ -465,7 +471,7 @@ class Medicao(object):
             self.medidor_dut.imprimir_dados(dut_readings)
 
         # Ciclo DC
-        self.chave.write_raw(dc);
+        self.chave.gpib.write_raw(dc);
         print("Ciclo +DC")
         espera(wait_time);
 
@@ -475,11 +481,11 @@ class Medicao(object):
         self.medidor_dut.imprimir_dados(dut_readings)
 
         # Ciclo AC
-        self.chave.write_raw(ac);
+        self.chave.gpib.write_raw(ac);
         print("Ciclo AC")
         espera(wait_time/2);
         # Mudar fonte DC para -DC
-        self.fonte_dc.write("OUT -{:.6f} V".format(vdc_atual));
+        self.fonte_dc.gpib.write("OUT -{:.6f} V".format(vdc_atual));
         espera(wait_time/2);
 
         std_readings.append(self.medidor_std.ler_dados())
@@ -488,7 +494,7 @@ class Medicao(object):
         self.medidor_dut.imprimir_dados(dut_readings)
 
         # Ciclo -DC
-        self.chave.write_raw(dc);
+        self.chave.gpib.write_raw(dc);
         print("Ciclo -DC")
         espera(wait_time);
 
@@ -498,11 +504,11 @@ class Medicao(object):
         self.medidor_dut.imprimir_dados(dut_readings)
 
         # Ciclo AC
-        self.chave.write_raw(ac);
+        self.chave.gpib.write_raw(ac);
         print("Ciclo AC")
         espera(wait_time/2);
         # Mudar fonte DC para +DC
-        self.fonte_dc.write("OUT +{:.6f} V".format(vdc_atual));
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(vdc_atual));
         espera(wait_time/2);
 
         std_readings.append(self.medidor_std.ler_dados())
@@ -559,10 +565,10 @@ class Medicao(object):
         return
 
     def interromper(self):
-        self.chave.write_raw(reset);
+        self.chave.gpib.write_raw(reset);
         espera(1)
-        self.fonte_ac.write("STBY");
-        self.fonte_dc.write("STBY");
+        self.fonte_ac.gpib.write("STBY");
+        self.fonte_dc.gpib.write("STBY");
         return
 
     def criar_registro(self):
@@ -619,7 +625,7 @@ class Medicao(object):
 
         with open(self.registro_filename,"a") as csvfile:
             registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
-            registro.writerow(self.timestamp,str(self.x[0]).replace('.',','),str(self.y[0]).replace('.',','),str(self.x[1]).replace('.',','),str(self.y[1]).replace('.',','),str(self.x[2]).replace('.',','),str(self.y[2]).replace('.',','),str(self.x[3]).replace('.',','),str(self.y[3]).replace('.',','),str(self.x[4]).replace('.',','),str(self.y[4]).replace('.',','),str(self.delta_m).replace('.',','),str(self.Delta).replace('.',','),str(self.vdc_atual).replace('.',',')]);
+            registro.writerow(self.timestamp,str(self.x[0]).replace('.',','),str(self.y[0]).replace('.',','),str(self.x[1]).replace('.',','),str(self.y[1]).replace('.',','),str(self.x[2]).replace('.',','),str(self.y[2]).replace('.',','),str(self.x[3]).replace('.',','),str(self.y[3]).replace('.',','),str(self.x[4]).replace('.',','),str(self.y[4]).replace('.',','),str(self.delta_m).replace('.',','),str(self.Delta).replace('.',','),str(self.vdc_atual).replace('.',','));
 
         csvfile.close();
         return
@@ -653,9 +659,11 @@ def main():
         DUT = Medidor('DUT')
         SW = Chave()
         
+        setup = Medicao(AC, DC, STD, DUT, SW)
+
         # inicializacao do objeto Measurement
         print("Colocando fontes em OPERATE...")
-        setup = Medicao(AC, DC, STD, DUT, SW)
+        setup.inicializar()
         
         
         print("Criando arquivo de registro...")
