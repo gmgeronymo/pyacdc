@@ -161,25 +161,19 @@ class Medidor(Instrumento):
         self.tipo = tipo
 
         if self.modelo == '3458A':
-        #    self.resource.write
             self.resource.write("OFORMAT ASCII")
             self.resource.write("END ALWAYS")
             self.resource.write("NPLC 8")
-            #self.idn = self.resource.query("ID?"));
-            self.idn = self.resource + "teste"
-
+            self.idn = self.resource.query("ID?"));
+            
         elif self.modelo == '182A':
-            #    self.resource.write
             self.resource.write("R0I0B1X")
             self.resource.write("S2N1X")
             self.resource.write("O1P2X")
             self.idn = "Keithley 182A"
 
         elif self.modelo == '53132A':
-            #self.idn = self.resource.query("ID?"));
-            self.idn = self.resource + "teste"
-            #counter_init(self.resource)
-            #    self.resource.write
+            self.idn = self.resource.query("*IDN?"));
             self.resource.write("*RST")
             self.resource.write("*CLS")
             self.resource.write("*SRE 0")
@@ -210,12 +204,10 @@ class Medidor(Instrumento):
             self.resource.write(":SENS:VOLT:CHAN2:RANG:AUTO ON")
             self.resource.write(":SENS:VOLT:NPLC 18")
             self.resource.write(":SENS:VOLT:DIG 8")
-            #self.idn = self.resource.query("ID?"));
-            self.idn = self.resource + "teste"
-
+            self.idn = self.resource.query("*IDN?"));
+            
         else:
-            #self.idn = self.resource.query("ID?"));
-            self.idn = self.resource + "teste"
+            self.idn = self.resource.query("*IDN?"));
         
     def print_idn(self):
         if self.tipo == 'STD':
@@ -284,7 +276,6 @@ class Medicao(object):
         espera(10);
         self.chave.write_raw(ac);
         espera(10);
-#        return
 
     def aquecimento(self, tempo):
     # executa o aquecimento, mantendo a tensão nominal aplicada pelo tempo
@@ -384,7 +375,7 @@ class Medicao(object):
         self.nY = (Yi/Y0 - 1) * k;
 
         self.results_n = [numpy.mean(nX), numpy.std(nX, ddof=1), numpy.mean(nY), numpy.std(nY, ddof=1)];
-#        self.results_n = {'results':results, 'Xi':Xi, 'X0':X0, 'Yi':Yi, 'Y0':Y0, 'k':k, 'nX':nX, 'nY':nY}
+
         return
 
     def equilibrio(self):
@@ -525,9 +516,6 @@ class Medicao(object):
     def calcular(self):
         # x -> padrao; y -> objeto
         print("Calculando diferença ac-dc...")
-        #n_X = N[0]; # n do padrão
-        #n_Y = N[2]; # n do objeto
-        # extrai os dados de leituras do padrão
 
         if self.medidor_std.modelo == '182A':
             self.x = numpy.array([float(a.replace('NDCV','').strip()) for a in self.measurements['std_readings']]);
@@ -567,10 +555,6 @@ class Medicao(object):
         # timestamp de cada medição
         date = datetime.datetime.now();
         self.timestamp = datetime.datetime.strftime(date, '%d/%m/%Y %H:%M:%S');
-        # retorna lista com os arrays de leitura do padrão, objeto, a diferença ac-dc,
-        # Delta=Yac-Ydc, o ajuste DC e o horário
-#        self.results_acdc = {'std_readings':x,'dut_readings':y,'dif':delta_m, 'Delta':Delta, 'adj_dc':adj_dc,'timestamp':timestamp}
-
         return
 
     def interromper(self):
@@ -608,23 +592,23 @@ class Medicao(object):
             registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
             registro.writerow(['Tensão [V]',str(v_nominal).replace('.',',')]);
             registro.writerow(['Frequência [kHz]',str(freq / 1000).replace('.',',')]);
-            registro.writerow([' ']); # pular linha
-            registro.writerow(['X0',str(self.X0).replace('.',',')]); # valor de X0
-            registro.writerow(['Xi'] + [str(i).replace('.',',') for i in self.Xi]); # valores de Xi
-            registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); # valores de k
-            registro.writerow(['nX'] + [str(i).replace('.',',') for i in self.nX]); # valores de nX
-            registro.writerow(['nX (média)',str(self.results_n[0]).replace('.',',')]); # Valor médio de nX
-            registro.writerow(['nX (desvio padrão)',str(self.results_n[1]).replace('.',',')]); # desvio padrão de nX
-            registro.writerow([' ']); # pular linha
-            registro.writerow(['Y0',str(self.Y0).replace('.',',')]); # valor de X0
-            registro.writerow(['Yi'] + [str(i).replace('.',',') for i in self.Yi]); # valores de Yi
-            registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); # valores de k
-            registro.writerow(['nY'] + [str(i).replace('.',',') for i in self.nY]); # valores de nY
-            registro.writerow(['nY (média)',str(self.results_n[2]).replace('.',',')]); # valor médio de nY
-            registro.writerow(['nY (desvio padrão)',str(self.results_n[3]).replace('.',',')]); # desvio padrão de nY
-            registro.writerow([' ']); # pular linha
-            registro.writerow(['Vac equilíbrio [V]',str(self.vac_atual).replace('.',',')]); # Vac calculado para o equilíbrio
-            registro.writerow([' ']); # pular linha
+            registro.writerow([' ']); 
+            registro.writerow(['X0',str(self.X0).replace('.',',')]); 
+            registro.writerow(['Xi'] + [str(i).replace('.',',') for i in self.Xi]); 
+            registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); 
+            registro.writerow(['nX'] + [str(i).replace('.',',') for i in self.nX]); 
+            registro.writerow(['nX (média)',str(self.results_n[0]).replace('.',',')]); 
+            registro.writerow(['nX (desvio padrão)',str(self.results_n[1]).replace('.',',')]); 
+            registro.writerow([' ']); 
+            registro.writerow(['Y0',str(self.Y0).replace('.',',')]); 
+            registro.writerow(['Yi'] + [str(i).replace('.',',') for i in self.Yi]); 
+            registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); 
+            registro.writerow(['nY'] + [str(i).replace('.',',') for i in self.nY]); 
+            registro.writerow(['nY (média)',str(self.results_n[2]).replace('.',',')]); 
+            registro.writerow(['nY (desvio padrão)',str(self.results_n[3]).replace('.',',')]); 
+            registro.writerow([' ']); 
+            registro.writerow(['Vac equilíbrio [V]',str(self.vac_atual).replace('.',',')]);
+            registro.writerow([' ']); 
             # cabeçalho da tabela de medicao
             registro.writerow(['Data / hora','AC (STD)','AC (DUT)','DC+ (STD)','DC+ (DUT)','AC (STD)','AC (DUT)','DC- (STD)','DC- (DUT)','AC (STD)','AC (DUT)', 'Diferença', 'Delta', 'Tensão DC Aplicada']);
         csvfile.close();
