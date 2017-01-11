@@ -94,6 +94,7 @@ def espera(segundos):
 class Instrumento(object):
     """ Classe genérica para os instrumentos
     Atributos:
+    barramento: numero do barramento GPIB utilizado
     endereco: string com o endereço GPIB do instrumento
     modelo: modelo do instrumento
     """
@@ -101,7 +102,7 @@ class Instrumento(object):
     __metaclass__ = ABCMeta
     def __init__(self, endereco, modelo):
         self.endereco = endereco
-        self.resource = rm.open_resource("GPIB0::"+self.endereco+"::INSTR")
+        self.resource = rm.open_resource("GPIB"+config['GPIB']['id']+"::"+self.endereco+"::INSTR")
         self.modelo = modelo
 
 #-------------------------------------------------------------------------------
