@@ -429,11 +429,9 @@ class Medicao(object):
         self.vac_atual = numpy.interp(xi,xp,yp);
         self.adj_dc = v_nominal
 
-        if vac_atual > 1.1*v_nominal:  # verifica se a tensão AC de equilíbrio não é muito elevada
+        if self.vac_atual > 1.1*v_nominal:  # verifica se a tensão AC de equilíbrio não é muito elevada
             raise NameError('Tensão AC ajustada perigosamente alta!')
         
-        # retorna o novo valor de AC
-        # return new_ac
         return
 
     def medir_acdc(self, ciclo_ac):
@@ -485,7 +483,7 @@ class Medicao(object):
         print("Ciclo AC")
         espera(wait_time/2);
         # Mudar fonte DC para -DC
-        self.fonte_dc.gpib.write("OUT -{:.6f} V".format(vdc_atual));
+        self.fonte_dc.gpib.write("OUT -{:.6f} V".format(self.vdc_atual));
         espera(wait_time/2);
 
         std_readings.append(self.medidor_std.ler_dados())
@@ -508,7 +506,7 @@ class Medicao(object):
         print("Ciclo AC")
         espera(wait_time/2);
         # Mudar fonte DC para +DC
-        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(vdc_atual));
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(self.vdc_atual));
         espera(wait_time/2);
 
         std_readings.append(self.medidor_std.ler_dados())
@@ -535,9 +533,9 @@ class Medicao(object):
         else:
             self.y = numpy.array([float(a.strip()) for a in self.measurements['dut_readings']])
         # calcula Xac, Xdc, Yac e Ydc a partir das leituras brutas    
-        Xac = numpy.mean(numpy.array([x[0], x[2], x[4]]));     # AC médio padrão
-        Xdc = numpy.mean(numpy.array([x[1], x[3]]));           # DC médio padrão
-        Yac = numpy.mean(numpy.array([y[0], y[2], y[4]]));     # AC médio objeto
+        Xac = numpy.mean(numpy.array([self.x[0], self.x[2], self.x[4]]));     # AC médio padrão
+        Xdc = numpy.mean(numpy.array([self.x[1], self.x[3]]));           # DC médio padrão
+        Yac = numpy.mean(numpy.array([self.y[0], self.y[2], self.y[4]]));     # AC médio objeto
         Ydc = numpy.mean(numpy.array([y[1], y[3]]));           # DC médio objeto
         # Variáveis auxiliares X e Y
         X = Xac/Xdc - 1;
