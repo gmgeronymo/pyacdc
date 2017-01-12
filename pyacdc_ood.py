@@ -671,7 +671,8 @@ def main():
 
         print("Arquivo "+setup.registro_filename+" criado com sucesso!")
 
-        print("Aquecimento...")
+        print("Tempo de aquecimento: "+str(heating_time)+" s")
+        print("Iniciando o aquecimento.")
         setup.aquecimento(heating_time)  # inicia o aquecimento
         
         # fazer loop para cada valor de frequencia
