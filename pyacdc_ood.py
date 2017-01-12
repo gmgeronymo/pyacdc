@@ -541,7 +541,7 @@ class Medicao(object):
         X = Xac/Xdc - 1;
         Y = Yac/Ydc - 1;
         # diferença AC-DC medida:
-        self.delta_m = 1e6 * ((X/self.n_X - Y/self.n_Y)/(1 + Y/self.n_Y));
+        self.delta_m = 1e6 * ((X/self.nX - Y/self.nY)/(1 + Y/self.nY));
         # critério para repetir a medição - diferença entre Yac e Ydc
 
         if self.medidor_dut.modelo == '53132A':
@@ -552,7 +552,7 @@ class Medicao(object):
             self.Delta = 1e6 * (Yac - Ydc);
 
         # ajuste da tensão DC para o próximo ciclo
-        self.adj_dc = self.vdc_atual * (1 + (Yac - Ydc)/(self.n_Y * Ydc));
+        self.adj_dc = self.vdc_atual * (1 + (Yac - Ydc)/(self.nY * Ydc));
         
         if self.adj_dc > 1.1*v_nominal:
             raise NameError('Tensão DC ajustada perigosamente alta!') 
