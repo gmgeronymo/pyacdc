@@ -294,7 +294,7 @@ class Medicao(object):
         self.fonte_ac.gpib.write("OUT +{:.6f} V".format(v_nominal));
         self.fonte_ac.gpib.write("OUT 1000 HZ");
 
-        for i in range(1,rep):
+        for i in range(0,rep):
             self.chave.gpib.write_raw(dc);
             espera(60);
             self.chave.gpib.write_raw(ac);
@@ -626,7 +626,7 @@ class Medicao(object):
 
         with open(self.registro_filename,"a") as csvfile:
             registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
-            registro.writerow(self.timestamp,str(self.x[0]).replace('.',','),str(self.y[0]).replace('.',','),str(self.x[1]).replace('.',','),str(self.y[1]).replace('.',','),str(self.x[2]).replace('.',','),str(self.y[2]).replace('.',','),str(self.x[3]).replace('.',','),str(self.y[3]).replace('.',','),str(self.x[4]).replace('.',','),str(self.y[4]).replace('.',','),str(self.delta_m).replace('.',','),str(self.Delta).replace('.',','),str(self.vdc_atual).replace('.',','));
+            registro.writerow([self.timestamp,str(self.x[0]).replace('.',','),str(self.y[0]).replace('.',','),str(self.x[1]).replace('.',','),str(self.y[1]).replace('.',','),str(self.x[2]).replace('.',','),str(self.y[2]).replace('.',','),str(self.x[3]).replace('.',','),str(self.y[3]).replace('.',','),str(self.x[4]).replace('.',','),str(self.y[4]).replace('.',','),str(self.delta_m).replace('.',','),str(self.Delta).replace('.',','),str(self.vdc_atual).replace('.',',')]);
 
         csvfile.close();
         return
