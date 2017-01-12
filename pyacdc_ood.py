@@ -536,7 +536,7 @@ class Medicao(object):
         Xac = numpy.mean(numpy.array([self.x[0], self.x[2], self.x[4]]));     # AC médio padrão
         Xdc = numpy.mean(numpy.array([self.x[1], self.x[3]]));           # DC médio padrão
         Yac = numpy.mean(numpy.array([self.y[0], self.y[2], self.y[4]]));     # AC médio objeto
-        Ydc = numpy.mean(numpy.array([y[1], y[3]]));           # DC médio objeto
+        Ydc = numpy.mean(numpy.array([self.y[1], self.y[3]]));           # DC médio objeto
         # Variáveis auxiliares X e Y
         X = Xac/Xdc - 1;
         Y = Yac/Ydc - 1;
