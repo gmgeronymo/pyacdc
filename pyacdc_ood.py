@@ -378,11 +378,14 @@ class Medicao(object):
         else:
             self.Yi = numpy.array([float(a.strip()) for a in dut_readings]);
             
-        self.nX = (self.Xi/self.X0 - 1) * self.k;
-        self.nY = (self.Yi/self.Y0 - 1) * self.k;
+        self.nX_array = (self.Xi/self.X0 - 1) * self.k;
+        self.nY_array = (self.Yi/self.Y0 - 1) * self.k;
 
-        self.results_n = [numpy.mean(self.nX), numpy.std(self.nX, ddof=1), numpy.mean(self.nY), numpy.std(self.nY, ddof=1)];
-
+        self.nX_media = numpy.mean(self.nX_array)
+        self.nX_desvio = numpy.std(self.nX_array, ddof=1)
+        self.nY_media = numpy.mean(self.nY_array)
+        self.nY_desvio = numpy.std(self.nY_array, ddof=1)
+        
         return
 
     def equilibrio(self):
@@ -541,7 +544,7 @@ class Medicao(object):
         X = Xac/Xdc - 1;
         Y = Yac/Ydc - 1;
         # diferença AC-DC medida:
-        self.delta_m = 1e6 * ((X/self.nX - Y/self.nY)/(1 + Y/self.nY));
+        self.delta_m = 1e6 * ((X/self.nX_media - Y/self.nY_media)/(1 + Y/self.nY_media));
         # critério para repetir a medição - diferença entre Yac e Ydc
 
         if self.medidor_dut.modelo == '53132A':
@@ -552,7 +555,7 @@ class Medicao(object):
             self.Delta = 1e6 * (Yac - Ydc);
 
         # ajuste da tensão DC para o próximo ciclo
-        self.adj_dc = self.vdc_atual * (1 + (Yac - Ydc)/(self.nY * Ydc));
+        self.adj_dc = self.vdc_atual * (1 + (Yac - Ydc)/(self.nY_media * Ydc));
         
         if self.adj_dc > 1.1*v_nominal:
             raise NameError('Tensão DC ajustada perigosamente alta!') 
@@ -601,16 +604,16 @@ class Medicao(object):
             registro.writerow(['X0',str(self.X0).replace('.',',')]); 
             registro.writerow(['Xi'] + [str(i).replace('.',',') for i in self.Xi]); 
             registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); 
-            registro.writerow(['nX'] + [str(i).replace('.',',') for i in self.nX]); 
-            registro.writerow(['nX (média)',str(self.results_n[0]).replace('.',',')]); 
-            registro.writerow(['nX (desvio padrão)',str(self.results_n[1]).replace('.',',')]); 
+            registro.writerow(['nX'] + [str(i).replace('.',',') for i in self.nX_array]); 
+            registro.writerow(['nX (média)',str(self.nX_media).replace('.',',')]); 
+            registro.writerow(['nX (desvio padrão)',str(self.nX_desvio).replace('.',',')]); 
             registro.writerow([' ']); 
             registro.writerow(['Y0',str(self.Y0).replace('.',',')]); 
             registro.writerow(['Yi'] + [str(i).replace('.',',') for i in self.Yi]); 
             registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); 
-            registro.writerow(['nY'] + [str(i).replace('.',',') for i in self.nY]); 
-            registro.writerow(['nY (média)',str(self.results_n[2]).replace('.',',')]); 
-            registro.writerow(['nY (desvio padrão)',str(self.results_n[3]).replace('.',',')]); 
+            registro.writerow(['nY'] + [str(i).replace('.',',') for i in self.nY_array]); 
+            registro.writerow(['nY (média)',str(self.nY_media).replace('.',',')]); 
+            registro.writerow(['nY (desvio padrão)',str(self.nY_desvio).replace('.',',')]); 
             registro.writerow([' ']); 
             registro.writerow(['Vac equilíbrio [V]',str(self.vac_atual).replace('.',',')]);
             registro.writerow([' ']); 
@@ -683,10 +686,10 @@ def main():
             print("Medindo o N...")
             setup.medir_n(4)       # 4 repetições para o cálculo do N
             
-            print("N STD (média): {:5.2f}".format(setup.results_n[0]))
-            print("N STD (desvio padrão): {:5.2f}".format(setup.results_n[1]))
-            print("N DUT (média): {:5.2f}".format(setup.results_n[2]))
-            print("N DUT (desvio padrão): {:5.2f}".format(setup.results_n[3]))   
+            print("N STD (média): {:5.2f}".format(setup.nX_media))
+            print("N STD (desvio padrão): {:5.2f}".format(setup.nX_desvio))
+            print("N DUT (média): {:5.2f}".format(setup.nY_media))
+            print("N DUT (desvio padrão): {:5.2f}".format(setup.nY_desvio))   
 
             print("Equilibrio AC...")
             setup.equilibrio()
