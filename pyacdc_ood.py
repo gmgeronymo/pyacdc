@@ -381,7 +381,7 @@ class Medicao(object):
         self.nX = (self.Xi/self.X0 - 1) * self.k;
         self.nY = (self.Yi/self.Y0 - 1) * self.k;
 
-        self.results_n = [numpy.mean(nX), numpy.std(nX, ddof=1), numpy.mean(nY), numpy.std(nY, ddof=1)];
+        self.results_n = [numpy.mean(self.nX), numpy.std(self.nX, ddof=1), numpy.mean(self.nY), numpy.std(self.nY, ddof=1)];
 
         return
 
