@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
+import visa
+import datetime
 from PyQt5.QtCore import QDir, Qt
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QFileDialog, QGridLayout,
         QGroupBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QSpinBox,
         QVBoxLayout, QWidget, QComboBox, QLineEdit)
-import visa
 from abc import ABCMeta, abstractmethod
 
 # Constantes e variáveis globais
@@ -12,6 +13,8 @@ from abc import ABCMeta, abstractmethod
 reset = chr(2)
 ac = chr(4)
 dc = chr(6)
+
+rm = visa.ResourceManager()
 
 def espera(segundos):
     for i in range(int(segundos * 10)):
@@ -33,9 +36,6 @@ class Instrumento(object):
         self.gpib = rm.open_resource("GPIB"+self.bus+"::"+self.endereco+"::INSTR")
         self.modelo = modelo
 
-    def close(self):
-        self.gpib.close()
-        return
 #-------------------------------------------------------------------------------
         
 class Chave(Instrumento):
@@ -45,8 +45,9 @@ class Chave(Instrumento):
     modelo: modelo do instrumento ('METAS')
     """
 
-    def __init__(self,bus,endereco):
-        Instrumento.__init__(self, bus, endereco,'METAS')
+    def __init__(self,bus,endereco,modelo):
+        Instrumento.__init__(self, bus, endereco,modelo)
+        self.idn = "METAS AC/DC Switch"
     
     def print_idn(self):
         print("Comunicando com a chave no endereço "+self.endereco+".");
@@ -89,7 +90,7 @@ class Medidor(Instrumento):
     tipo: string, assume os valores 'STD' ou 'DUT'
     """
     def __init__(self, tipo):
-        Instrumento.__init__(self, config['GPIB'][tipo], config['Instruments'][tipo])
+        Instrumento.__init__(self, bus, endereco, modelo)
         if (tipo != 'DUT') & (tipo != 'STD'):
             raise NameError('tipo deve ser STD ou DUT')
 
@@ -209,36 +210,36 @@ class Configuracoes(QWidget):
         self.voltage.setText("1")
         self.frequency.setText("0.01,0.02,0.03,0.04,0.055,0.06,0.065,0.12,0.3,0.4,0.5,1,10,20,30,50,70,100,200,300,500,700,800,1000")
 
-        self.wait_time.setValue(60)
+        self.waitTime.setValue(60)
         self.repeticoes.setValue(12)
-        self.repeticoes_aquecimento.setValue(8)
+        self.repeticoesAquecimento.setValue(8)
 
-        self.gpib_fonte_ac.setValue(5)
-        self.gpib_fonte_dc.setValue(13)
-        self.gpib_medidor_std.setValue(20)
-        self.gpib_medidor_dut.setValue(21)
-        self.gpib_chave.setValue(10)
+        self.fonteAcEndereco.setValue(5)
+        self.fonteDcEndereco.setValue(13)
+        self.medidorStdEndereco.setValue(20)
+        self.medidorDutEndereco.setValue(21)
+        self.chaveEndereco.setValue(10)
 
         self.setWindowTitle("Configurações")
-        self.resize(500, 300)
+        self.resize(600, 400)
 
     def createPontosGroupBox(self):
         self.pontosGroupBox = QGroupBox("Pontos de Medição")
 
-        self.voltage_label = QLabel(self)
-        self.voltage_label.setText("Tensão [V]")
+        self.voltageLabel = QLabel(self)
+        self.voltageLabel.setText("Tensão [V]")
         self.voltage = QLineEdit(self)
 
-        self.frequency_label = QLabel(self)
-        self.frequency_label.setText("Frequências [kHz]")
+        self.frequencyLabel = QLabel(self)
+        self.frequencyLabel.setText("Frequências [kHz]")
         self.frequency = QLineEdit(self)
 
         # layout
         pontosGroupBoxLayout = QGridLayout()
 
         # Primeira coluna: labels
-        pontosGroupBoxLayout.addWidget(self.voltage_label, 0, 0)
-        pontosGroupBoxLayout.addWidget(self.frequency_label, 1, 0)
+        pontosGroupBoxLayout.addWidget(self.voltageLabel, 0, 0)
+        pontosGroupBoxLayout.addWidget(self.frequencyLabel, 1, 0)
 
         # Segunda coluna: lineEdit
         pontosGroupBoxLayout.addWidget(self.voltage, 0, 1)
@@ -249,19 +250,19 @@ class Configuracoes(QWidget):
     def createInterfaceGPIBGroupBox(self):
         self.interfaceGPIBGroupBox = QGroupBox("Interface GPIB")
 
-        self.gpib_interface_label = QLabel(self)
-        self.gpib_interface_label.setText("Número da Interface GPIB")
-        self.gpib_interface = QSpinBox()
-        self.gpib_interface.setMaximum(1)
+        self.gpibBusLabel = QLabel(self)
+        self.gpibBusLabel.setText("Número da Interface GPIB")
+        self.gpibBus = QSpinBox()
+        self.gpibBus.setMaximum(1)
 
         # layout
         interfaceGPIBGroupBoxLayout = QGridLayout()
 
         # Primeira coluna: labels
-        interfaceGPIBGroupBoxLayout.addWidget(self.gpib_interface_label, 0, 0)
+        interfaceGPIBGroupBoxLayout.addWidget(self.gpibBusLabel, 0, 0)
 
         # Segunda coluna: spinbox
-        interfaceGPIBGroupBoxLayout.addWidget(self.gpib_interface, 0, 1)
+        interfaceGPIBGroupBoxLayout.addWidget(self.gpibBus, 0, 1)
         
         self.interfaceGPIBGroupBox.setLayout(interfaceGPIBGroupBoxLayout)
 
@@ -269,31 +270,31 @@ class Configuracoes(QWidget):
         self.parametrosGroupBox = QGroupBox("Parâmetros")
 
         # tempo de espera
-        self.wait_time_label = QLabel(self)
-        self.wait_time_label.setText("Tempo de espera [s]")
-        self.wait_time = QSpinBox()
+        self.waitTimeLabel = QLabel(self)
+        self.waitTimeLabel.setText("Tempo de espera [s]")
+        self.waitTime = QSpinBox()
 
         # repeticoes
-        self.repeticoes_label = QLabel(self)
-        self.repeticoes_label.setText("Repetições")
+        self.repeticoesLabel = QLabel(self)
+        self.repeticoesLabel.setText("Repetições")
         self.repeticoes = QSpinBox()
 
-        self.repeticoes_aquecimento_label = QLabel(self)
-        self.repeticoes_aquecimento_label.setText("Aquecimento")
-        self.repeticoes_aquecimento = QSpinBox()
+        self.repeticoesAquecimentoLabel = QLabel(self)
+        self.repeticoesAquecimentoLabel.setText("Aquecimento")
+        self.repeticoesAquecimento = QSpinBox()
 
         # layout
         parametrosGroupBoxLayout = QGridLayout()
 
         # Primeira coluna: labels
-        parametrosGroupBoxLayout.addWidget(self.wait_time_label, 0, 0)
-        parametrosGroupBoxLayout.addWidget(self.repeticoes_label, 1, 0)
-        parametrosGroupBoxLayout.addWidget(self.repeticoes_aquecimento_label, 2, 0)
+        parametrosGroupBoxLayout.addWidget(self.waitTimeLabel, 0, 0)
+        parametrosGroupBoxLayout.addWidget(self.repeticoesLabel, 1, 0)
+        parametrosGroupBoxLayout.addWidget(self.repeticoesAquecimentoLabel, 2, 0)
 
         # Segunda coluna: spinbox
-        parametrosGroupBoxLayout.addWidget(self.wait_time, 0, 1)
+        parametrosGroupBoxLayout.addWidget(self.waitTime, 0, 1)
         parametrosGroupBoxLayout.addWidget(self.repeticoes, 1, 1)
-        parametrosGroupBoxLayout.addWidget(self.repeticoes_aquecimento, 2, 1)
+        parametrosGroupBoxLayout.addWidget(self.repeticoesAquecimento, 2, 1)
 
         self.parametrosGroupBox.setLayout(parametrosGroupBoxLayout)
 
@@ -302,6 +303,9 @@ class Configuracoes(QWidget):
 
         # definicoes dos campos
         # labels (cabeçalho)
+        self.id = QLabel(self)
+        self.id.setText("Instrumento")
+        
         self.modelo = QLabel(self)
         self.modelo.setText("Modelo")
 
@@ -315,109 +319,166 @@ class Configuracoes(QWidget):
         self.idn.setText("Identificação")
 
         # fonte ac
-        self.gpib_fonte_ac_modelo = QComboBox()
-        self.gpib_fonte_ac_modelo.addItem("5700A")
-        self.gpib_fonte_ac_modelo.addItem("5720A")
-        self.gpib_fonte_ac_modelo.addItem("5730A")        
-        self.gpib_fonte_ac = QSpinBox()
-        self.gpib_fonte_ac.setMaximum(30)
-        self.gpib_fonte_ac_remoto = QCheckBox()
-        self.gpib_fonte_ac_remoto.stateChanged.connect(self.gpib_fonte_ac_remoto_changed)
-        self.gpib_fonte_ac_idn = QLineEdit(self)
-        self.gpib_fonte_ac_idn.setReadOnly(True)
+        self.fonteAcId = QLabel(self)
+        self.fonteAcId.setText("Fonte AC")
+        self.fonteAcModelo = QComboBox()
+        self.fonteAcModelo.addItem("Fluke 5700A")
+        self.fonteAcModelo.addItem("Fluke 5720A")
+        self.fonteAcModelo.addItem("Fluke 5730A")        
+        self.fonteAcEndereco = QSpinBox()
+        self.fonteAcEndereco.setMaximum(30)
+        self.fonteAcRemoto = QCheckBox()
+        self.fonteAcRemoto.stateChanged.connect(self.fonteAcRemotoChanged)
+        self.fonteAcIdn = QLineEdit(self)
+        self.fonteAcIdn.setReadOnly(True)
         
         # fonte dc
-        self.gpib_fonte_dc_modelo = QComboBox()
-        self.gpib_fonte_dc_modelo.addItem("5700A")
-        self.gpib_fonte_dc_modelo.addItem("5720A")
-        self.gpib_fonte_dc_modelo.addItem("5730A")
-        self.gpib_fonte_dc = QSpinBox()
-        self.gpib_fonte_dc.setMaximum(30)
-        self.gpib_fonte_dc_remoto = QCheckBox()
-        self.gpib_fonte_dc_idn = QLineEdit(self)
-        self.gpib_fonte_dc_idn.setReadOnly(True)
+        self.fonteDcId = QLabel(self)
+        self.fonteDcId.setText("Fonte DC")
+        self.fonteDcModelo = QComboBox()
+        self.fonteDcModelo.addItem("Fluke 5700A")
+        self.fonteDcModelo.addItem("Fluke 5720A")
+        self.fonteDcModelo.addItem("Fluke 5730A")        
+        self.fonteDcEndereco = QSpinBox()
+        self.fonteDcEndereco.setMaximum(30)
+        self.fonteDcRemoto = QCheckBox()
+        self.fonteDcRemoto.stateChanged.connect(self.fonteDcRemotoChanged)
+        self.fonteDcIdn = QLineEdit(self)
+        self.fonteDcIdn.setReadOnly(True)
 
         # medidor std
-        self.gpib_medidor_std_modelo = QComboBox()
-        self.gpib_medidor_std_modelo.addItem("182A")
-        self.gpib_medidor_std_modelo.addItem("2182A")
-        self.gpib_medidor_std_modelo.addItem("3548A")
-        self.gpib_medidor_std_modelo.addItem("53131A")
-        self.gpib_medidor_std = QSpinBox()
-        self.gpib_medidor_std.setMaximum(30)
-        self.gpib_medidor_std_remoto = QCheckBox()
-        self.gpib_medidor_std_idn = QLineEdit(self)
-        self.gpib_medidor_std_idn.setReadOnly(True)
+        self.medidorStdId = QLabel(self)
+        self.medidorStdId.setText("Medidor do Padrão")
+        self.medidorStdModelo = QComboBox()
+        self.medidorStdModelo.addItem("Keithley 182A")
+        self.medidorStdModelo.addItem("Keithley 2182A")
+        self.medidorStdModelo.addItem("Agilent 3548A")
+        self.medidorStdModelo.addItem("Agilent 53131A")
+        self.medidorStdEndereco = QSpinBox()
+        self.medidorStdEndereco.setMaximum(30)
+        self.medidorStdRemoto = QCheckBox()
+        self.medidorStdRemoto.stateChanged.connect(self.medidorStdRemotoChanged)
+        self.medidorStdIdn = QLineEdit(self)
+        self.medidorStdIdn.setReadOnly(True)
         
 
         # medidor dut
-        self.gpib_medidor_dut_modelo = QComboBox()
-        self.gpib_medidor_dut_modelo.addItem("182A")
-        self.gpib_medidor_dut_modelo.addItem("2182A")
-        self.gpib_medidor_dut_modelo.addItem("3548A")
-        self.gpib_medidor_dut_modelo.addItem("53131A")
-        self.gpib_medidor_dut = QSpinBox()
-        self.gpib_medidor_dut.setMaximum(30)
-        self.gpib_medidor_dut_remoto = QCheckBox()
-        self.gpib_medidor_dut_idn = QLineEdit(self)
-        self.gpib_medidor_dut_idn.setReadOnly(True)
+        self.medidorDutId = QLabel(self)
+        self.medidorDutId.setText("Medidor do Objeto")
+        self.medidorDutModelo = QComboBox()
+        self.medidorDutModelo.addItem("Keithley 182A")
+        self.medidorDutModelo.addItem("Keithley 2182A")
+        self.medidorDutModelo.addItem("Agilent 3548A")
+        self.medidorDutModelo.addItem("Agilent 53131A")
+        self.medidorDutEndereco = QSpinBox()
+        self.medidorDutEndereco.setMaximum(30)
+        self.medidorDutRemoto = QCheckBox()
+        self.medidorDutRemoto.stateChanged.connect(self.medidorDutRemotoChanged)
+        self.medidorDutIdn = QLineEdit(self)
+        self.medidorDutIdn.setReadOnly(True)
 
-        # chave 
-        self.gpib_chave_modelo = QComboBox()
-        self.gpib_chave_modelo.addItem("METAS")
-        self.gpib_chave = QSpinBox()
-        self.gpib_chave.setMaximum(30)
-        self.gpib_chave_remoto = QCheckBox()
-        self.gpib_chave_idn = QLineEdit(self)
-        self.gpib_chave_idn.setReadOnly(True)
-
-        #self.delaySpinBox.valueChanged.connect(self.updateCheckBox)
+        # chave
+        self.chaveId = QLabel(self)
+        self.chaveId.setText("Chave AC/DC")
+        self.chaveModelo = QComboBox()
+        self.chaveModelo.addItem("METAS")
+        self.chaveEndereco = QSpinBox()
+        self.chaveEndereco.setMaximum(30)
+        self.chaveRemoto = QCheckBox()
+        self.chaveRemoto.stateChanged.connect(self.chaveRemotoChanged)
+        self.chaveIdn = QLineEdit(self)
+        self.chaveIdn.setReadOnly(True)
 
         # Layout
         instrumentosGroupBoxLayout = QGridLayout()
 
-        # Primeira coluna: selecionar modelo
-        instrumentosGroupBoxLayout.addWidget(self.modelo, 0, 0)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_ac_modelo, 1, 0)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_dc_modelo, 2, 0)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_std_modelo, 3, 0)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_dut_modelo, 4, 0)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_chave_modelo, 5, 0)
+        # Coluna zero: identificacao dos instrumentos
 
-        # Segunda coluna: selecionar endereço GPIB
-        instrumentosGroupBoxLayout.addWidget(self.endereco, 0, 1)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_ac, 1, 1)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_dc, 2, 1)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_std, 3, 1)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_dut, 4, 1)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_chave, 5, 1)
+        instrumentosGroupBoxLayout.addWidget(self.id, 0, 0)
+        instrumentosGroupBoxLayout.addWidget(self.fonteAcId, 1, 0)
+        instrumentosGroupBoxLayout.addWidget(self.fonteDcId, 2, 0)
+        instrumentosGroupBoxLayout.addWidget(self.medidorStdId, 3, 0)
+        instrumentosGroupBoxLayout.addWidget(self.medidorDutId, 4, 0)
+        instrumentosGroupBoxLayout.addWidget(self.chaveId, 5, 0)
 
-        # Terceira coluna: checkbox para colocar em remoto
-        instrumentosGroupBoxLayout.addWidget(self.remoto, 0, 2)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_ac_remoto, 1, 2)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_dc_remoto, 2, 2)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_std_remoto, 3, 2)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_dut_remoto, 4, 2)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_chave_remoto, 5, 2)
+        # Coluna um: selecionar modelo
+        instrumentosGroupBoxLayout.addWidget(self.modelo, 0, 1)
+        instrumentosGroupBoxLayout.addWidget(self.fonteAcModelo, 1, 1)
+        instrumentosGroupBoxLayout.addWidget(self.fonteDcModelo, 2, 1)
+        instrumentosGroupBoxLayout.addWidget(self.medidorStdModelo, 3, 1)
+        instrumentosGroupBoxLayout.addWidget(self.medidorDutModelo, 4, 1)
+        instrumentosGroupBoxLayout.addWidget(self.chaveModelo, 5, 1)
 
-        # Quarta coluna: exibir string de identificacao quando em remoto
-        instrumentosGroupBoxLayout.addWidget(self.idn, 0, 3)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_ac_idn, 1 ,3)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_fonte_dc_idn, 2 ,3)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_std_idn, 3 ,3)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_medidor_dut_idn, 4 ,3)
-        instrumentosGroupBoxLayout.addWidget(self.gpib_chave_idn, 5 ,3)
+        # Coluna dois: selecionar endereço GPIB
+        instrumentosGroupBoxLayout.addWidget(self.endereco, 0, 2)
+        instrumentosGroupBoxLayout.addWidget(self.fonteAcEndereco, 1, 2)
+        instrumentosGroupBoxLayout.addWidget(self.fonteDcEndereco, 2, 2)
+        instrumentosGroupBoxLayout.addWidget(self.medidorStdEndereco, 3, 2)
+        instrumentosGroupBoxLayout.addWidget(self.medidorDutEndereco, 4, 2)
+        instrumentosGroupBoxLayout.addWidget(self.chaveEndereco, 5, 2)
+
+        # Coluna três: checkbox para colocar em remoto
+        instrumentosGroupBoxLayout.addWidget(self.remoto, 0, 3)
+        instrumentosGroupBoxLayout.addWidget(self.fonteAcRemoto, 1, 3)
+        instrumentosGroupBoxLayout.addWidget(self.fonteDcRemoto, 2, 3)
+        instrumentosGroupBoxLayout.addWidget(self.medidorStdRemoto, 3, 3)
+        instrumentosGroupBoxLayout.addWidget(self.medidorDutRemoto, 4, 3)
+        instrumentosGroupBoxLayout.addWidget(self.chaveRemoto, 5, 3)
+
+        # Coluna quatro: exibir string de identificacao quando em remoto
+        instrumentosGroupBoxLayout.addWidget(self.idn, 0, 4)
+        instrumentosGroupBoxLayout.addWidget(self.fonteAcIdn, 1 ,4)
+        instrumentosGroupBoxLayout.addWidget(self.fonteDcIdn, 2 ,4)
+        instrumentosGroupBoxLayout.addWidget(self.medidorStdIdn, 3 ,4)
+        instrumentosGroupBoxLayout.addWidget(self.medidorDutIdn, 4 ,4)
+        instrumentosGroupBoxLayout.addWidget(self.chaveIdn, 5 ,4)
         
         self.instrumentosGroupBox.setLayout(instrumentosGroupBoxLayout)
 
-    def gpib_fonte_ac_remoto_changed(self, int):
-        if self.gpib_fonte_ac_remoto.isChecked():
-            AC = Fonte(str(self.gpib_interface.value()),str(self.gpib_fonte_ac.value()),self.gpib_fonte_ac_modelo.currentText(),'AC')
-            self.gpib_fonte_ac_idn.setText(AC.idn)
-            #self.gpib_fonte_ac_idn.setText(str(self.gpib_interface.value())+","+str(self.gpib_fonte_ac.value())+","+self.gpib_fonte_ac_modelo.currentText()+","+"AC")
-        else:
-            AC.gpib.close()
-            self.gpib_fonte_ac_idn.setText("")
+    def fonteAcRemotoChanged(self, int):
+        if self.fonteAcRemoto.isChecked():
+            self.AC = Fonte(str(self.gpibBus.value()),str(self.fonteAcEndereco.value()),self.fonteAcModelo.currentText(),'AC')
+            self.fonteAcIdn.setText(self.AC.idn)    
+        else:            
+            self.fonteAcIdn.setText("")
+            self.AC.gpib.control_ren(0)
+        return
+
+    def fonteDcRemotoChanged(self, int):
+        if self.fonteDcRemoto.isChecked():
+            self.DC = Fonte(str(self.gpibBus.value()),str(self.fonteDcEndereco.value()),self.fonteDcModelo.currentText(),'DC')
+            self.fonteDcIdn.setText(self.DC.idn)
+        else:            
+            self.fonteDcIdn.setText("")
+            self.DC.gpib.control_ren(0)
+        return
+
+    def medidorStdChanged(self, int):
+        if self.medidorStdRemoto.isChecked():
+            self.STD = Medidor(str(self.gpibBus.value()),str(self.medidorStdEndereco.value()),self.medidorStdModelo.currentText(),'STD')
+            self.medidorStdIdn.setText(self.STD.idn)
+        else:            
+            self.medidorStdIdn.setText("")
+            self.STD.gpib.control_ren(0)
+        return
+
+    def medidorDutChanged(self, int):
+        if self.medidorDutRemoto.isChecked():
+            self.DUT = Medidor(str(self.gpibBus.value()),str(self.medidorDutEndereco.value()),self.medidorDutModelo.currentText(),'DUT')
+            self.medidorDutIdn.setText(self.DUT.idn)
+        else:            
+            self.medidorDutIdn.setText("")
+            self.DUT.gpib.control_ren(0)
+        return
+
+    def chaveChanged(self, int):
+        if self.chaveRemoto.isChecked():
+            self.SW = Chave(str(self.gpibBus.value()),str(self.chaveEndereco.value()),self.chaveModelo.currentText())
+            self.chaveIdn.setText(self.SW.idn)
+        else:            
+            self.chaveIdn.setText("")
+            self.SW.gpib.control_ren(0)
+        return
             
 
     def createButtonsLayout(self):
