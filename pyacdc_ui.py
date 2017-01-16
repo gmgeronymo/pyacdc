@@ -86,29 +86,29 @@ class Medidor(Instrumento):
     """ Classe para as medidores do padrão e do objeto
     Atributos:
     endereco: string com o endereço GPIB do instrumento
-    modelo: modelo do instrumento ('182A', '2182A', '53181A', '3458A', etc.)
+    modelo: modelo do instrumento ('Keithley 182A', 'Keithley 2182A', 'Agilent 53132A', 'Agilent 3458A', etc.)
     tipo: string, assume os valores 'STD' ou 'DUT'
     """
-    def __init__(self, tipo):
+    def __init__(self, bus, endereco, modelo, tipo):
         Instrumento.__init__(self, bus, endereco, modelo)
         if (tipo != 'DUT') & (tipo != 'STD'):
             raise NameError('tipo deve ser STD ou DUT')
 
         self.tipo = tipo
 
-        if self.modelo == '3458A':
+        if self.modelo == 'Agilent 3458A':
             self.gpib.write("OFORMAT ASCII")
             self.gpib.write("END ALWAYS")
             self.gpib.write("NPLC 8")
             self.idn = self.gpib.query("ID?");
             
-        elif self.modelo == '182A':
+        elif self.modelo == 'Keithley 182A':
             self.gpib.write("R0I0B1X")
             self.gpib.write("S2N1X")
             self.gpib.write("O1P2X")
             self.idn = "Keithley 182A"
 
-        elif self.modelo == '53132A':
+        elif self.modelo == 'Agilent 53132A':
             self.idn = self.gpib.query("*IDN?");
             self.gpib.write("*RST")
             self.gpib.write("*CLS")
@@ -135,7 +135,7 @@ class Medidor(Instrumento):
             self.gpib.write("*DDT #15FETC?")
             self.gpib.write(":INIT:CONT ON")
 
-        elif self.modelo == '2182A':
+        elif self.modelo == 'Keithley 2182A':
             self.gpib.write("SENS:CHAN 2")
             self.gpib.write(":SENS:VOLT:CHAN2:RANG:AUTO ON")
             self.gpib.write(":SENS:VOLT:NPLC 18")
@@ -158,24 +158,24 @@ class Medidor(Instrumento):
         return
 
     def ler_dados(self):
-        if self.modelo == '182A':
+        if self.modelo == 'Keithley 182A':
             x = self.gpib.query("X")
-        elif self.modelo == '2182A':
+        elif self.modelo == 'Keithley 2182A':
             x = self.gpib.query(":FETCH?")
-        elif self.modelo == '53132A':
+        elif self.modelo == 'Agilent 53132A':
             x = self.gpib.query(":FETCH:FREQ?")
-        elif self.modelo == '3458A':
+        elif self.modelo == 'Agilent 3458A':
             x = self.gpib.query("OHM 100E3")
         return x
 
     def imprimir_dados(self, readings):
-        if self.modelo == '182A':
+        if self.modelo == 'Keithley 182A':
             print(self.tipo+" [mV] {:5.6f}".format(float(readings[-1].replace('NDCV','').strip())*1000))
-        elif self.modelo == '2182A':
+        elif self.modelo == 'Keithley 2182A':
             print(self.tipo+" [mV] {:5.6f}".format(float(readings[-1].strip())*1000))
-        elif self.modelo == '53132A':
+        elif self.modelo == 'Agilent 53132A':
             print(self.tipo+" [Hz] {:5.8f}".format(float(readings[-1].strip())))
-        elif self.modelo == '3458A':
+        elif self.modelo == 'Agilent 3458A':
             print(self.tipo+" [ohms] {:5.8f}".format(float(readings[-1].strip())))
         return
 
@@ -353,7 +353,7 @@ class Configuracoes(QWidget):
         self.medidorStdModelo.addItem("Keithley 182A")
         self.medidorStdModelo.addItem("Keithley 2182A")
         self.medidorStdModelo.addItem("Agilent 3548A")
-        self.medidorStdModelo.addItem("Agilent 53131A")
+        self.medidorStdModelo.addItem("Agilent 53132A")
         self.medidorStdEndereco = QSpinBox()
         self.medidorStdEndereco.setMaximum(30)
         self.medidorStdRemoto = QCheckBox()
@@ -369,7 +369,7 @@ class Configuracoes(QWidget):
         self.medidorDutModelo.addItem("Keithley 182A")
         self.medidorDutModelo.addItem("Keithley 2182A")
         self.medidorDutModelo.addItem("Agilent 3548A")
-        self.medidorDutModelo.addItem("Agilent 53131A")
+        self.medidorDutModelo.addItem("Agilent 53132A")
         self.medidorDutEndereco = QSpinBox()
         self.medidorDutEndereco.setMaximum(30)
         self.medidorDutRemoto = QCheckBox()
