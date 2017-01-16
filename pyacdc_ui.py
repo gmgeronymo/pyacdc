@@ -5,8 +5,9 @@ import datetime
 from PyQt5.QtCore import QDir, Qt
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QFileDialog, QGridLayout,
         QGroupBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QSpinBox,
-        QVBoxLayout, QWidget, QComboBox, QLineEdit)
+        QVBoxLayout, QWidget, QComboBox, QLineEdit, QMessageBox)
 from abc import ABCMeta, abstractmethod
+from functools import partial
 
 # Constantes e variáveis globais
 # comandos da chave (em ASCII puro)
@@ -303,8 +304,11 @@ class Configuracoes(QWidget):
 
         # definicoes dos campos
         # labels (cabeçalho)
-        self.id = QLabel(self)
-        self.id.setText("Instrumento")
+        #self.id = QLabel(self)
+        #self.id.setText("Instrumento")
+
+        self.remoto = QLabel(self)
+        self.remoto.setText("Remoto?")
         
         self.modelo = QLabel(self)
         self.modelo.setText("Modelo")
@@ -312,43 +316,39 @@ class Configuracoes(QWidget):
         self.endereco = QLabel(self)
         self.endereco.setText("Endereço GPIB")
         
-        self.remoto = QLabel(self)
-        self.remoto.setText("REM?")
-        
         self.idn = QLabel(self)
         self.idn.setText("Identificação")
 
         # fonte ac
-        self.fonteAcId = QLabel(self)
-        self.fonteAcId.setText("Fonte AC")
+        self.fonteAcRemoto = QCheckBox("Fonte AC")
+        slotFonteAc = partial(self.controleRemoto, self.fonteAcRemoto)
+        self.fonteAcRemoto.stateChanged.connect(lambda x: slotFonteAc())
         self.fonteAcModelo = QComboBox()
         self.fonteAcModelo.addItem("Fluke 5700A")
         self.fonteAcModelo.addItem("Fluke 5720A")
         self.fonteAcModelo.addItem("Fluke 5730A")        
         self.fonteAcEndereco = QSpinBox()
-        self.fonteAcEndereco.setMaximum(30)
-        self.fonteAcRemoto = QCheckBox()
-        self.fonteAcRemoto.stateChanged.connect(self.fonteAcRemotoChanged)
+        self.fonteAcEndereco.setMaximum(30)       
         self.fonteAcIdn = QLineEdit(self)
         self.fonteAcIdn.setReadOnly(True)
         
         # fonte dc
-        self.fonteDcId = QLabel(self)
-        self.fonteDcId.setText("Fonte DC")
+        self.fonteDcRemoto = QCheckBox("Fonte DC")
+        slotFonteDc = partial(self.controleRemoto, self.fonteDcRemoto)
+        self.fonteDcRemoto.stateChanged.connect(lambda x: slotFonteDc())
         self.fonteDcModelo = QComboBox()
         self.fonteDcModelo.addItem("Fluke 5700A")
         self.fonteDcModelo.addItem("Fluke 5720A")
         self.fonteDcModelo.addItem("Fluke 5730A")        
         self.fonteDcEndereco = QSpinBox()
         self.fonteDcEndereco.setMaximum(30)
-        self.fonteDcRemoto = QCheckBox()
-        self.fonteDcRemoto.stateChanged.connect(self.fonteDcRemotoChanged)
         self.fonteDcIdn = QLineEdit(self)
         self.fonteDcIdn.setReadOnly(True)
 
         # medidor std
-        self.medidorStdId = QLabel(self)
-        self.medidorStdId.setText("Medidor do Padrão")
+        self.medidorStdRemoto = QCheckBox("Medidor do Padrão")
+        slotMedidorStd = partial(self.controleRemoto, self.medidorStdRemoto)
+        self.medidorStdRemoto.stateChanged.connect(lambda x: slotMedidorStd())
         self.medidorStdModelo = QComboBox()
         self.medidorStdModelo.addItem("Keithley 182A")
         self.medidorStdModelo.addItem("Keithley 2182A")
@@ -356,15 +356,14 @@ class Configuracoes(QWidget):
         self.medidorStdModelo.addItem("Agilent 53132A")
         self.medidorStdEndereco = QSpinBox()
         self.medidorStdEndereco.setMaximum(30)
-        self.medidorStdRemoto = QCheckBox()
-        self.medidorStdRemoto.stateChanged.connect(self.medidorStdRemotoChanged)
         self.medidorStdIdn = QLineEdit(self)
         self.medidorStdIdn.setReadOnly(True)
         
 
         # medidor dut
-        self.medidorDutId = QLabel(self)
-        self.medidorDutId.setText("Medidor do Objeto")
+        self.medidorDutRemoto = QCheckBox("Medidor do Objeto")
+        slotMedidorDut = partial(self.controleRemoto, self.medidorDutRemoto)
+        self.medidorDutRemoto.stateChanged.connect(lambda x: slotMedidorDut())
         self.medidorDutModelo = QComboBox()
         self.medidorDutModelo.addItem("Keithley 182A")
         self.medidorDutModelo.addItem("Keithley 2182A")
@@ -372,34 +371,30 @@ class Configuracoes(QWidget):
         self.medidorDutModelo.addItem("Agilent 53132A")
         self.medidorDutEndereco = QSpinBox()
         self.medidorDutEndereco.setMaximum(30)
-        self.medidorDutRemoto = QCheckBox()
-        self.medidorDutRemoto.stateChanged.connect(self.medidorDutRemotoChanged)
         self.medidorDutIdn = QLineEdit(self)
         self.medidorDutIdn.setReadOnly(True)
 
         # chave
-        self.chaveId = QLabel(self)
-        self.chaveId.setText("Chave AC/DC")
+        self.chaveRemoto = QCheckBox("Chave AC/DC")
+        slotChave = partial(self.controleRemoto, self.chaveRemoto)
+        self.chaveRemoto.stateChanged.connect(lambda x: slotChave())
         self.chaveModelo = QComboBox()
         self.chaveModelo.addItem("METAS")
         self.chaveEndereco = QSpinBox()
-        self.chaveEndereco.setMaximum(30)
-        self.chaveRemoto = QCheckBox()
-        self.chaveRemoto.stateChanged.connect(self.chaveRemotoChanged)
+        self.chaveEndereco.setMaximum(30)      
         self.chaveIdn = QLineEdit(self)
         self.chaveIdn.setReadOnly(True)
 
         # Layout
         instrumentosGroupBoxLayout = QGridLayout()
 
-        # Coluna zero: identificacao dos instrumentos
-
-        instrumentosGroupBoxLayout.addWidget(self.id, 0, 0)
-        instrumentosGroupBoxLayout.addWidget(self.fonteAcId, 1, 0)
-        instrumentosGroupBoxLayout.addWidget(self.fonteDcId, 2, 0)
-        instrumentosGroupBoxLayout.addWidget(self.medidorStdId, 3, 0)
-        instrumentosGroupBoxLayout.addWidget(self.medidorDutId, 4, 0)
-        instrumentosGroupBoxLayout.addWidget(self.chaveId, 5, 0)
+        # Coluna zero: checkbox para colocar em remoto
+        instrumentosGroupBoxLayout.addWidget(self.remoto, 0, 0)
+        instrumentosGroupBoxLayout.addWidget(self.fonteAcRemoto, 1, 0)
+        instrumentosGroupBoxLayout.addWidget(self.fonteDcRemoto, 2, 0)
+        instrumentosGroupBoxLayout.addWidget(self.medidorStdRemoto, 3, 0)
+        instrumentosGroupBoxLayout.addWidget(self.medidorDutRemoto, 4, 0)
+        instrumentosGroupBoxLayout.addWidget(self.chaveRemoto, 5, 0)
 
         # Coluna um: selecionar modelo
         instrumentosGroupBoxLayout.addWidget(self.modelo, 0, 1)
@@ -417,68 +412,63 @@ class Configuracoes(QWidget):
         instrumentosGroupBoxLayout.addWidget(self.medidorDutEndereco, 4, 2)
         instrumentosGroupBoxLayout.addWidget(self.chaveEndereco, 5, 2)
 
-        # Coluna três: checkbox para colocar em remoto
-        instrumentosGroupBoxLayout.addWidget(self.remoto, 0, 3)
-        instrumentosGroupBoxLayout.addWidget(self.fonteAcRemoto, 1, 3)
-        instrumentosGroupBoxLayout.addWidget(self.fonteDcRemoto, 2, 3)
-        instrumentosGroupBoxLayout.addWidget(self.medidorStdRemoto, 3, 3)
-        instrumentosGroupBoxLayout.addWidget(self.medidorDutRemoto, 4, 3)
-        instrumentosGroupBoxLayout.addWidget(self.chaveRemoto, 5, 3)
-
-        # Coluna quatro: exibir string de identificacao quando em remoto
-        instrumentosGroupBoxLayout.addWidget(self.idn, 0, 4)
-        instrumentosGroupBoxLayout.addWidget(self.fonteAcIdn, 1 ,4)
-        instrumentosGroupBoxLayout.addWidget(self.fonteDcIdn, 2 ,4)
-        instrumentosGroupBoxLayout.addWidget(self.medidorStdIdn, 3 ,4)
-        instrumentosGroupBoxLayout.addWidget(self.medidorDutIdn, 4 ,4)
-        instrumentosGroupBoxLayout.addWidget(self.chaveIdn, 5 ,4)
+        
+        # Coluna três: exibir string de identificacao quando em remoto
+        instrumentosGroupBoxLayout.addWidget(self.idn, 0, 3)
+        instrumentosGroupBoxLayout.addWidget(self.fonteAcIdn, 1, 3)
+        instrumentosGroupBoxLayout.addWidget(self.fonteDcIdn, 2, 3)
+        instrumentosGroupBoxLayout.addWidget(self.medidorStdIdn, 3, 3)
+        instrumentosGroupBoxLayout.addWidget(self.medidorDutIdn, 4, 3)
+        instrumentosGroupBoxLayout.addWidget(self.chaveIdn, 5, 3)
         
         self.instrumentosGroupBox.setLayout(instrumentosGroupBoxLayout)
 
-    def fonteAcRemotoChanged(self, int):
-        if self.fonteAcRemoto.isChecked():
-            self.AC = Fonte(str(self.gpibBus.value()),str(self.fonteAcEndereco.value()),self.fonteAcModelo.currentText(),'AC')
-            self.fonteAcIdn.setText(self.AC.idn)    
-        else:            
-            self.fonteAcIdn.setText("")
-            self.AC.gpib.control_ren(0)
-        return
-
-    def fonteDcRemotoChanged(self, int):
-        if self.fonteDcRemoto.isChecked():
-            self.DC = Fonte(str(self.gpibBus.value()),str(self.fonteDcEndereco.value()),self.fonteDcModelo.currentText(),'DC')
-            self.fonteDcIdn.setText(self.DC.idn)
-        else:            
-            self.fonteDcIdn.setText("")
-            self.DC.gpib.control_ren(0)
-        return
-
-    def medidorStdRemotoChanged(self, int):
-        if self.medidorStdRemoto.isChecked():
-            self.STD = Medidor(str(self.gpibBus.value()),str(self.medidorStdEndereco.value()),self.medidorStdModelo.currentText(),'STD')
-            self.medidorStdIdn.setText(self.STD.idn)
-        else:            
-            self.medidorStdIdn.setText("")
-            self.STD.gpib.control_ren(0)
-        return
-
-    def medidorDutRemotoChanged(self, int):
-        if self.medidorDutRemoto.isChecked():
-            self.DUT = Medidor(str(self.gpibBus.value()),str(self.medidorDutEndereco.value()),self.medidorDutModelo.currentText(),'DUT')
-            self.medidorDutIdn.setText(self.DUT.idn)
-        else:            
-            self.medidorDutIdn.setText("")
-            self.DUT.gpib.control_ren(0)
-        return
-
-    def chaveRemotoChanged(self, int):
-        if self.chaveRemoto.isChecked():
-            self.SW = Chave(str(self.gpibBus.value()),str(self.chaveEndereco.value()),self.chaveModelo.currentText())
-            self.chaveIdn.setText(self.SW.idn)
-        else:            
-            self.chaveIdn.setText("")
-            self.SW.gpib.control_ren(0)
-        return
+    def controleRemoto(self, checkbox):
+        if checkbox.isChecked():
+            try:
+                if checkbox.text() == "Fonte AC":
+                    self.AC = Fonte(str(self.gpibBus.value()),str(self.fonteAcEndereco.value()),self.fonteAcModelo.currentText(),'AC')
+                    self.fonteAcIdn.setText(self.AC.idn)
+                elif checkbox.text() == "Fonte DC":
+                    self.DC = Fonte(str(self.gpibBus.value()),str(self.fonteDcEndereco.value()),self.fonteDcModelo.currentText(),'DC')
+                    self.fonteDcIdn.setText(self.DC.idn)
+                elif checkbox.text() == "Medidor Padrão":
+                    self.STD = Medidor(str(self.gpibBus.value()),str(self.medidorStdEndereco.value()),self.medidorStdModelo.currentText(),'STD')
+                    self.medidorStdIdn.setText(self.STD.idn)
+                elif checkbox.text() == "Medidor Objeto":
+                    self.DUT = Medidor(str(self.gpibBus.value()),str(self.medidorDutEndereco.value()),self.medidorDutModelo.currentText(),'DUT')
+                    self.medidorDutIdn.setText(self.DUT.idn)
+                elif checkbox.text() == "Chave AC/DC":
+                    self.SW = Chave(str(self.gpibBus.value()),str(self.chaveEndereco.value()),self.chaveModelo.currentText())
+                    self.chaveIdn.setText(self.SW.idn)
+                    
+            except:
+                QMessageBox.critical(self, "Erro",
+                "Erro ao conectar com o instrumento!",
+                QMessageBox.Abort)
+                
+        else:
+            try:
+                if checkbox.text() == "Fonte AC":
+                    self.AC.gpib.control_ren(0)
+                    self.fonteAcIdn.setText("")
+                elif checkbox.text() == "Fonte DC":
+                    self.DC.gpib.control_ren(0)
+                    self.fonteDcIdn.setText("")
+                elif checkbox.text() == "Medidor Padrão":
+                    self.STD.gpib.control_ren(0)
+                    self.fonteStdIdn.setText("")
+                elif checkbox.text() == "Medidor Objeto":
+                    self.DUT.gpib.control_ren(0)
+                    self.fonteDutIdn.setText("")
+                elif checkbox.text() == "Chave AC/DC":
+                    self.SW.gpib.control_ren(0)
+                    self.chaveIdn.setText("")
+            except:
+                #QMessageBox.critical(self, "Erro",
+                #"Erro ao conectar com o instrumento!",
+                #QMessageBox.Abort)
+                self.chaveIdn.setText("")
             
 
     def createButtonsLayout(self):
