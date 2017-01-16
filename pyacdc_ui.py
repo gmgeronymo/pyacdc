@@ -453,7 +453,7 @@ class Configuracoes(QWidget):
             self.DC.gpib.control_ren(0)
         return
 
-    def medidorStdChanged(self, int):
+    def medidorStdRemotoChanged(self, int):
         if self.medidorStdRemoto.isChecked():
             self.STD = Medidor(str(self.gpibBus.value()),str(self.medidorStdEndereco.value()),self.medidorStdModelo.currentText(),'STD')
             self.medidorStdIdn.setText(self.STD.idn)
@@ -462,7 +462,7 @@ class Configuracoes(QWidget):
             self.STD.gpib.control_ren(0)
         return
 
-    def medidorDutChanged(self, int):
+    def medidorDutRemotoChanged(self, int):
         if self.medidorDutRemoto.isChecked():
             self.DUT = Medidor(str(self.gpibBus.value()),str(self.medidorDutEndereco.value()),self.medidorDutModelo.currentText(),'DUT')
             self.medidorDutIdn.setText(self.DUT.idn)
@@ -471,7 +471,7 @@ class Configuracoes(QWidget):
             self.DUT.gpib.control_ren(0)
         return
 
-    def chaveChanged(self, int):
+    def chaveRemotoChanged(self, int):
         if self.chaveRemoto.isChecked():
             self.SW = Chave(str(self.gpibBus.value()),str(self.chaveEndereco.value()),self.chaveModelo.currentText())
             self.chaveIdn.setText(self.SW.idn)
