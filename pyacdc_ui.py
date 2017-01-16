@@ -5,7 +5,7 @@ import datetime
 from PyQt5.QtCore import QDir, Qt
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QFileDialog, QGridLayout,
         QGroupBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QSpinBox,
-        QVBoxLayout, QWidget, QComboBox, QLineEdit, QMessageBox)
+        QVBoxLayout, QWidget, QComboBox, QLineEdit, QMessageBox, QSpacerItem)
 from abc import ABCMeta, abstractmethod
 from functools import partial
 
@@ -186,23 +186,26 @@ class Configuracoes(QWidget):
 
         self.createParametrosGroupBox()
         self.createPontosGroupBox()
-        self.createInterfaceGPIBGroupBox()
+        self.createLeiturasGroupBox()
         self.createInstrumentosGroupBox()
         self.createButtonsLayout()
         
-        mainLayout = QVBoxLayout()
         topLayout = QHBoxLayout()
-        top2Layout = QVBoxLayout()
-        
-        top2Layout.addWidget(self.pontosGroupBox)
-        top2Layout.addWidget(self.interfaceGPIBGroupBox)
+        main2Layout = QHBoxLayout()
+        leftLayout = QVBoxLayout()
+        mainLayout = QVBoxLayout()
         
         topLayout.addWidget(self.parametrosGroupBox)
-        topLayout.addLayout(top2Layout)
+        topLayout.addWidget(self.pontosGroupBox)
         
         
-        mainLayout.addLayout(topLayout)
-        mainLayout.addWidget(self.instrumentosGroupBox)
+        leftLayout.addLayout(topLayout)
+        leftLayout.addWidget(self.instrumentosGroupBox)
+
+        main2Layout.addLayout(leftLayout)
+        main2Layout.addWidget(self.leiturasGroupBox)
+
+        mainLayout.addLayout(main2Layout) 
         mainLayout.addLayout(self.buttonsLayout)
         self.setLayout(mainLayout)
 
@@ -222,10 +225,124 @@ class Configuracoes(QWidget):
         self.chaveEndereco.setValue(10)
 
         self.setWindowTitle("Configurações")
-        self.resize(600, 400)
+        self.resize(800, 400)
+
+    def createLeiturasGroupBox(self):
+
+        self.leiturasGroupBox = QGroupBox("Leituras")
+
+        # labels
+        self.leiturasAc1Label = QLabel(self)
+        self.leiturasAc1Label.setText(" AC")
+        self.leiturasDcpLabel = QLabel(self)
+        self.leiturasDcpLabel.setText("+DC")
+        self.leiturasAc2Label = QLabel(self)
+        self.leiturasAc2Label.setText(" AC")
+        self.leiturasDcmLabel = QLabel(self)
+        self.leiturasDcmLabel.setText("-DC")
+        self.leiturasAc3Label = QLabel(self)
+        self.leiturasAc3Label.setText(" AC")
+
+        # padrao
+        self.leiturasPadraoLabel = QLabel(self)
+        self.leiturasPadraoLabel.setText("Padrão [mV]")
+        self.leiturasPadraoAc1 = QLineEdit(self)
+        self.leiturasPadraoAc2 = QLineEdit(self)
+        self.leiturasPadraoAc3 = QLineEdit(self)
+        self.leiturasPadraoDcp = QLineEdit(self)
+        self.leiturasPadraoDcm = QLineEdit(self)
+
+        # objeto
+        self.leiturasObjetoLabel = QLabel(self)
+        self.leiturasObjetoLabel.setText("Objeto [mV]")
+        self.leiturasObjetoAc1 = QLineEdit(self)
+        self.leiturasObjetoAc2 = QLineEdit(self)
+        self.leiturasObjetoAc3 = QLineEdit(self)
+        self.leiturasObjetoDcp = QLineEdit(self)
+        self.leiturasObjetoDcm = QLineEdit(self)
+
+        # tempo de espera
+        self.esperaCounterLabel = QLabel(self)
+        self.esperaCounterLabel.setText("Espera")
+        self.esperaCounter = QLineEdit(self)
+        self.esperaTotal = QLineEdit(self)
+
+        # repeticoes
+        self.repeticoesCounterLabel = QLabel(self)
+        self.repeticoesCounterLabel.setText("Repetições")
+        self.repeticoesCounter = QLineEdit(self)
+        self.repeticoesTotal = QLineEdit(self)
+
+        # coeficiente n
+        self.coeficienteNLabel = QLabel(self)
+        self.coeficienteNLabel.setText("Coeficiente n")
+        self.nPadraoLabel = QLabel(self)
+        self.nPadraoLabel.setText("Padrão")
+        self.nObjetoLabel = QLabel(self)
+        self.nObjetoLabel.setText("Objeto")
+        self.nPadrao = QLineEdit(self)
+        self.nObjeto = QLineEdit(self)
+
+        verticalSpacer = QSpacerItem(20, 40)
+
+        # layout
+
+        leiturasGroupBoxLayout = QGridLayout()
+
+        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoLabel, 0, 1)
+        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoLabel, 0, 2)
+        
+        leiturasGroupBoxLayout.addWidget(self.leiturasAc1Label, 1, 0)
+        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoAc1, 1, 1)
+        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoAc1, 1, 2)
+        
+        leiturasGroupBoxLayout.addWidget(self.leiturasDcpLabel, 2, 0)
+        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoDcp, 2, 1)
+        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoDcp, 2, 2)
+
+        leiturasGroupBoxLayout.addWidget(self.leiturasAc2Label, 3, 0)
+        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoAc2, 3, 1)
+        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoAc2, 3, 2)
+
+        leiturasGroupBoxLayout.addWidget(self.leiturasDcmLabel, 4, 0)
+        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoDcm, 4, 1)
+        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoDcm, 4, 2)
+
+        leiturasGroupBoxLayout.addWidget(self.leiturasAc3Label, 5, 0)
+        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoAc3, 5, 1)
+        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoAc3, 5, 2)
+
+        leiturasGroupBoxLayout.addItem(verticalSpacer)
+
+        leiturasGroupBoxLayout.addWidget(self.esperaCounterLabel, 7, 0)
+        leiturasGroupBoxLayout.addWidget(self.esperaCounter, 7, 1)
+        leiturasGroupBoxLayout.addWidget(self.esperaTotal, 7, 2)
+
+        leiturasGroupBoxLayout.addWidget(self.repeticoesCounterLabel, 8, 0)
+        leiturasGroupBoxLayout.addWidget(self.repeticoesCounter, 8, 1)
+        leiturasGroupBoxLayout.addWidget(self.repeticoesTotal, 8, 2)
+
+        leiturasGroupBoxLayout.addItem(verticalSpacer)
+
+        leiturasGroupBoxLayout.addWidget(self.nPadraoLabel, 10, 1)
+        leiturasGroupBoxLayout.addWidget(self.nObjetoLabel, 10, 2)
+
+        leiturasGroupBoxLayout.addWidget(self.coeficienteNLabel, 11, 0)
+        leiturasGroupBoxLayout.addWidget(self.nPadrao, 11, 1)
+        leiturasGroupBoxLayout.addWidget(self.nObjeto, 11, 2)        
+
+        self.leiturasGroupBox.setLayout(leiturasGroupBoxLayout)
 
     def createPontosGroupBox(self):
         self.pontosGroupBox = QGroupBox("Pontos de Medição")
+
+        self.padraoLabel = QLabel(self)
+        self.padraoLabel.setText("Identificação do Padrão")
+        self.padrao = QLineEdit(self)
+
+        self.objetoLabel = QLabel(self)
+        self.objetoLabel.setText("Identificação do Objeto")
+        self.objeto = QLineEdit(self)
 
         self.voltageLabel = QLabel(self)
         self.voltageLabel.setText("Tensão [V]")
@@ -235,37 +352,29 @@ class Configuracoes(QWidget):
         self.frequencyLabel.setText("Frequências [kHz]")
         self.frequency = QLineEdit(self)
 
+        self.observacoesLabel = QLabel(self)
+        self.observacoesLabel.setText("Observações")
+        self.observacoes = QLineEdit(self)
+
         # layout
         pontosGroupBoxLayout = QGridLayout()
 
-        # Primeira coluna: labels
-        pontosGroupBoxLayout.addWidget(self.voltageLabel, 0, 0)
-        pontosGroupBoxLayout.addWidget(self.frequencyLabel, 1, 0)
+        pontosGroupBoxLayout.addWidget(self.padraoLabel, 0, 0)
+        pontosGroupBoxLayout.addWidget(self.padrao, 0, 1)
+        
+        pontosGroupBoxLayout.addWidget(self.objetoLabel, 1, 0)
+        pontosGroupBoxLayout.addWidget(self.objeto, 1, 1)
+        
+        pontosGroupBoxLayout.addWidget(self.voltageLabel, 2, 0)
+        pontosGroupBoxLayout.addWidget(self.voltage, 2, 1)
 
-        # Segunda coluna: lineEdit
-        pontosGroupBoxLayout.addWidget(self.voltage, 0, 1)
-        pontosGroupBoxLayout.addWidget(self.frequency, 1, 1)
+        pontosGroupBoxLayout.addWidget(self.frequencyLabel, 3, 0)
+        pontosGroupBoxLayout.addWidget(self.frequency, 3, 1)
+
+        pontosGroupBoxLayout.addWidget(self.observacoesLabel, 4, 0)
+        pontosGroupBoxLayout.addWidget(self.observacoes, 4, 1)
         
         self.pontosGroupBox.setLayout(pontosGroupBoxLayout)
-
-    def createInterfaceGPIBGroupBox(self):
-        self.interfaceGPIBGroupBox = QGroupBox("Interface GPIB")
-
-        self.gpibBusLabel = QLabel(self)
-        self.gpibBusLabel.setText("Número da Interface GPIB")
-        self.gpibBus = QSpinBox()
-        self.gpibBus.setMaximum(1)
-
-        # layout
-        interfaceGPIBGroupBoxLayout = QGridLayout()
-
-        # Primeira coluna: labels
-        interfaceGPIBGroupBoxLayout.addWidget(self.gpibBusLabel, 0, 0)
-
-        # Segunda coluna: spinbox
-        interfaceGPIBGroupBoxLayout.addWidget(self.gpibBus, 0, 1)
-        
-        self.interfaceGPIBGroupBox.setLayout(interfaceGPIBGroupBoxLayout)
 
     def createParametrosGroupBox(self):
         self.parametrosGroupBox = QGroupBox("Parâmetros")
@@ -280,9 +389,18 @@ class Configuracoes(QWidget):
         self.repeticoesLabel.setText("Repetições")
         self.repeticoes = QSpinBox()
 
+        # aquecimento
+
         self.repeticoesAquecimentoLabel = QLabel(self)
         self.repeticoesAquecimentoLabel.setText("Aquecimento")
         self.repeticoesAquecimento = QSpinBox()
+
+        # gpib bus
+        
+        self.gpibBusLabel = QLabel(self)
+        self.gpibBusLabel.setText("GPIB Bus")
+        self.gpibBus = QSpinBox()
+        self.gpibBus.setMaximum(1)
 
         # layout
         parametrosGroupBoxLayout = QGridLayout()
@@ -291,11 +409,13 @@ class Configuracoes(QWidget):
         parametrosGroupBoxLayout.addWidget(self.waitTimeLabel, 0, 0)
         parametrosGroupBoxLayout.addWidget(self.repeticoesLabel, 1, 0)
         parametrosGroupBoxLayout.addWidget(self.repeticoesAquecimentoLabel, 2, 0)
+        parametrosGroupBoxLayout.addWidget(self.gpibBusLabel, 3, 0)
 
         # Segunda coluna: spinbox
         parametrosGroupBoxLayout.addWidget(self.waitTime, 0, 1)
         parametrosGroupBoxLayout.addWidget(self.repeticoes, 1, 1)
         parametrosGroupBoxLayout.addWidget(self.repeticoesAquecimento, 2, 1)
+        parametrosGroupBoxLayout.addWidget(self.gpibBus, 3, 1)
 
         self.parametrosGroupBox.setLayout(parametrosGroupBoxLayout)
 
@@ -432,10 +552,10 @@ class Configuracoes(QWidget):
                 elif checkbox.text() == "Fonte DC":
                     self.DC = Fonte(str(self.gpibBus.value()),str(self.fonteDcEndereco.value()),self.fonteDcModelo.currentText(),'DC')
                     self.fonteDcIdn.setText(self.DC.idn)
-                elif checkbox.text() == "Medidor Padrão":
+                elif checkbox.text() == "Medidor do Padrão":
                     self.STD = Medidor(str(self.gpibBus.value()),str(self.medidorStdEndereco.value()),self.medidorStdModelo.currentText(),'STD')
                     self.medidorStdIdn.setText(self.STD.idn)
-                elif checkbox.text() == "Medidor Objeto":
+                elif checkbox.text() == "Medidor do Objeto":
                     self.DUT = Medidor(str(self.gpibBus.value()),str(self.medidorDutEndereco.value()),self.medidorDutModelo.currentText(),'DUT')
                     self.medidorDutIdn.setText(self.DUT.idn)
                 elif checkbox.text() == "Chave AC/DC":
@@ -455,10 +575,10 @@ class Configuracoes(QWidget):
                 elif checkbox.text() == "Fonte DC":
                     self.DC.gpib.control_ren(0)
                     self.fonteDcIdn.setText("")
-                elif checkbox.text() == "Medidor Padrão":
+                elif checkbox.text() == "Medidor do Padrão":
                     self.STD.gpib.control_ren(0)
                     self.fonteStdIdn.setText("")
-                elif checkbox.text() == "Medidor Objeto":
+                elif checkbox.text() == "Medidor do Objeto":
                     self.DUT.gpib.control_ren(0)
                     self.fonteDutIdn.setText("")
                 elif checkbox.text() == "Chave AC/DC":
@@ -479,11 +599,13 @@ class Configuracoes(QWidget):
 ##                self.saveScreenshot)
 
         self.quitConfig = self.createButton("Sair", self.close)
+        self.medir = self.createButton("Medir", self.close)
+        self.parar = self.createButton("Parar", self.close)
 
         self.buttonsLayout = QHBoxLayout()
         self.buttonsLayout.addStretch()
-##        self.buttonsLayout.addWidget(self.newScreenshotButton)
-##        self.buttonsLayout.addWidget(self.saveScreenshotButton)
+        self.buttonsLayout.addWidget(self.medir)
+        self.buttonsLayout.addWidget(self.parar)
         self.buttonsLayout.addWidget(self.quitConfig)
 
     def createButton(self, text, member):
