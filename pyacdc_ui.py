@@ -1068,26 +1068,6 @@ class Configuracoes(QWidget):
                 "A medição não foi iniciada!",
                 QMessageBox.Abort)
 
-    def iniciarMedicao2(self):
-        global v_nominal
-        global AC
-        global DC
-        global STD
-        global DUT
-        global SW
-        print(AC.idn)
-        print(DC.idn)
-        print(STD.idn)
-        print(DUT.idn)
-        print(SW.idn)
-        setup = Medicao(AC, DC, STD, DUT, SW)
-        print(AC.gpib.query("*IDN?"))
-        v_nominal = float(self.voltage.text().strip())
-        print(v_nominal)
-        setup.inicializar()
-        
-        return
-    
     def iniciarMedicao(self):
         global AC
         global DC
@@ -1209,6 +1189,8 @@ class Configuracoes(QWidget):
             self.setup.interromper()
             import traceback
             traceback.print_exc()
+
+        return
  
 
 if __name__ == '__main__':
