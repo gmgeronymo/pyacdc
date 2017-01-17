@@ -247,31 +247,45 @@ class Configuracoes(QWidget):
         self.leiturasPadraoLabel = QLabel(self)
         self.leiturasPadraoLabel.setText("Padrão [mV]")
         self.leiturasPadraoAc1 = QLineEdit(self)
+        self.leiturasPadraoAc1.setReadOnly(True)
         self.leiturasPadraoAc2 = QLineEdit(self)
+        self.leiturasPadraoAc2.setReadOnly(True)
         self.leiturasPadraoAc3 = QLineEdit(self)
+        self.leiturasPadraoAc3.setReadOnly(True)
         self.leiturasPadraoDcp = QLineEdit(self)
+        self.leiturasPadraoDcp.setReadOnly(True)
         self.leiturasPadraoDcm = QLineEdit(self)
+        self.leiturasPadraoDcm.setReadOnly(True)
 
         # objeto
         self.leiturasObjetoLabel = QLabel(self)
         self.leiturasObjetoLabel.setText("Objeto [mV]")
         self.leiturasObjetoAc1 = QLineEdit(self)
+        self.leiturasObjetoAc1.setReadOnly(True)
         self.leiturasObjetoAc2 = QLineEdit(self)
+        self.leiturasObjetoAc2.setReadOnly(True)
         self.leiturasObjetoAc3 = QLineEdit(self)
+        self.leiturasObjetoAc3.setReadOnly(True)
         self.leiturasObjetoDcp = QLineEdit(self)
+        self.leiturasObjetoDcp.setReadOnly(True)
         self.leiturasObjetoDcm = QLineEdit(self)
+        self.leiturasObjetoDcm.setReadOnly(True)
 
         # tempo de espera
         self.esperaCounterLabel = QLabel(self)
         self.esperaCounterLabel.setText("Espera")
         self.esperaCounter = QLineEdit(self)
+        self.esperaCounter.setReadOnly(True)
         self.esperaTotal = QLineEdit(self)
+        self.esperaTotal.setReadOnly(True)
 
         # repeticoes
         self.repeticoesCounterLabel = QLabel(self)
         self.repeticoesCounterLabel.setText("Repetições")
         self.repeticoesCounter = QLineEdit(self)
+        self.repeticoesCounter.setReadOnly(True)
         self.repeticoesTotal = QLineEdit(self)
+        self.repeticoesTotal.setReadOnly(True)
 
         # coeficiente n
         self.coeficienteNLabel = QLabel(self)
@@ -281,7 +295,9 @@ class Configuracoes(QWidget):
         self.nObjetoLabel = QLabel(self)
         self.nObjetoLabel.setText("Objeto")
         self.nPadrao = QLineEdit(self)
+        self.nPadrao.setReadOnly(True)
         self.nObjeto = QLineEdit(self)
+        self.nObjeto.setReadOnly(True)
 
         verticalSpacer = QSpacerItem(20, 40)
 
@@ -577,10 +593,10 @@ class Configuracoes(QWidget):
                     self.fonteDcIdn.setText("")
                 elif checkbox.text() == "Medidor do Padrão":
                     self.STD.gpib.control_ren(0)
-                    self.fonteStdIdn.setText("")
+                    self.medidorStdIdn.setText.setText("")
                 elif checkbox.text() == "Medidor do Objeto":
                     self.DUT.gpib.control_ren(0)
-                    self.fonteDutIdn.setText("")
+                    self.medidorDutIdn.setText("")
                 elif checkbox.text() == "Chave AC/DC":
                     self.SW.gpib.control_ren(0)
                     self.chaveIdn.setText("")
