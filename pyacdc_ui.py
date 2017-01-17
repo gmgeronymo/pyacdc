@@ -180,6 +180,436 @@ class Medidor(Instrumento):
             print(self.tipo+" [ohms] {:5.8f}".format(float(readings[-1].strip())))
         return
 
+    def mostrar_leituras(self, readings, ciclo):
+        if self.modelo == 'Keithley 182A':
+            if self.tipo == 'STD':
+                self.leiturasPadrao[ciclo].setText("{:5.6f}".format(float(readings[-1].replace('NDCV','').strip())*1000))
+            else:
+                self.leiturasObjeto[ciclo].setText("{:5.6f}".format(float(readings[-1].replace('NDCV','').strip())*1000))
+        elif self.modelo == 'Keithley 2182A':
+            if self.tipo == 'STD':
+                self.leiturasPadrao[ciclo].setText("{:5.6f}".format(float(readings[-1].strip())*1000))
+            else:
+                self.leiturasObjeto[ciclo].setText("{:5.6f}".format(float(readings[-1].strip())*1000))
+        elif self.modelo == 'Agilent 53132A':
+            if self.tipo == 'STD':
+                self.leiturasPadrao[ciclo].setText("{:5.8f}".format(float(readings[-1].strip())))
+            else:
+                self.leiturasObjeto[ciclo].setText("{:5.8f}".format(float(readings[-1].strip())))
+        elif self.modelo == 'Agilent 3458A':
+            if self.tipo == 'STD':
+                self.leiturasPadrao[ciclo].setText("{:5.8f}".format(float(readings[-1].strip())))
+            else:
+                self.leiturasObjeto[ciclo].setText("{:5.8f}".format(float(readings[-1].strip())))
+        return
+
+class Medicao(object):
+    """ Classe do processo de medição
+    Atributos:
+    fonte_ac: objeto pyVISA da fonte ac
+    fonte_dc: objeto pyVISA da fonte dc
+    medidor_std: objeto pyVISA do medidor do padrao
+    medidor_dut: objeto pyVISA do medidor do objeto
+    chave: objeto pyVISA da chave
+    """
+
+    def __init__(self, fonte_ac, fonte_dc, medidor_std, medidor_dut, chave):
+        self.fonte_ac = fonte_ac
+        self.fonte_dc = fonte_dc
+        self.medidor_std = medidor_std
+        self.medidor_dut = medidor_dut
+        self.chave = chave
+
+    def inicializar(self):
+        # configuração da fonte AC
+        self.fonte_ac.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT 1000 HZ");
+        # configuração da fonte DC
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_dc.gpib.write("OUT 0 HZ");
+        # Entrar em OPERATE
+        espera(2); # esperar 2 segundos
+        self.fonte_ac.gpib.write("*CLS");
+        self.fonte_ac.gpib.write("OPER");
+        self.fonte_dc.gpib.write("*CLS");
+        self.fonte_dc.gpib.write("OPER");
+        espera(10);
+        self.chave.gpib.write_raw(ac);
+        espera(10);
+        return
+
+    def aquecimento(self, tempo):
+    # executa o aquecimento, mantendo a tensão nominal aplicada pelo tempo
+    # (em segundos) definido na variavel "tempo", alternando entre AC e DC
+    # a cada 60 segundos
+        rep = int(tempo / 120);
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_dc.gpib.write("OUT 0 HZ");
+        self.fonte_ac.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT 1000 HZ");
+
+        for i in range(0,rep):
+            self.chave.gpib.write_raw(dc);
+            espera(60);
+            self.chave.gpib.write_raw(ac);
+            espera(60);
+        return
+
+    def medir_n(self, M):
+        # testa se M é par, se não for, soma 1 para se tornar par
+        if int(M) % 2 != 0:
+            M += 1;
+        # define as variáveis que armazenam as leituras do padrão e do objeto
+        std_readings = []
+        dut_readings = []
+        # variavel da constante V0 / (Vi-V0)
+        self.k = []
+        # aplica o valor nominal de tensão
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(v_nominal));
+        self.fonte_ac.gpib.write("OUT "+str(freq)+" HZ");
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(v_nominal));
+        espera(2); # espera 2 segundos
+        self.chave.gpib.write_raw(dc);
+        print("Vdc nominal: +{:.6f} V".format(v_nominal))
+        # aguarda pelo tempo de espera configurado
+        espera(wait_time);
+        # lê as saídas de padrão e objeto, e armazena na variável std_readings e
+        # dut_readings
+        std_readings.append(self.medidor_std.ler_dados())
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_std.imprimir_dados(std_readings)
+        self.medidor_dut.imprimir_dados(dut_readings)
+
+        for i in range(1,M+1):
+        # determina se i é par ou ímpar
+        # se i é impar, v_i = 1,01*v_nominal
+        # se i é par, v_i = 0,99*v_nominal
+            if int(i) % 2 == 0:
+                Vi = 0.99*v_nominal;
+                self.k.append(-100);
+            else:
+                Vi = 1.01*v_nominal;
+                self.k.append(100);
+
+            self.chave.gpib.write_raw(ac);
+            espera(2); # esperar 2 segundos
+            self.fonte_dc.gpib.write("OUT +{:.6f} V".format(Vi));
+            espera(2); # esperar 2 segundos
+            self.chave.gpib.write_raw(dc);
+            print("Vdc nominal + 1%: +{:.6f} V".format(Vi));
+            # aguarda pelo tempo de espera configurado
+            espera(wait_time);
+            # lê as saídas de padrão e objeto, e armazena na variável std_readings e
+            # dut_readings
+            std_readings.append(self.medidor_std.ler_dados())
+            dut_readings.append(self.medidor_dut.ler_dados())
+            self.medidor_std.imprimir_dados(std_readings)
+            self.medidor_dut.imprimir_dados(dut_readings)
+                
+        # cálculo do n
+        self.chave.gpib.write_raw(ac); # mantém chave em ac durante cálculo
+        
+        if self.medidor_std.modelo == '182A':
+            self.X0 = float(std_readings[0].replace('NDCV','').strip())
+        else:
+            self.X0 = float(std_readings[0].strip())
+            
+        if self.medidor_dut.modelo == '182A':
+            self.Y0 = float(dut_readings[0].replace('NDCV','').strip())
+        else:
+            self.Y0 = float(dut_readings[0].strip())
+        
+        del std_readings[0]
+        del dut_readings[0]
+
+        if self.medidor_std.modelo == '182A':
+            self.Xi = numpy.array([float(a.replace('NDCV','').strip()) for a in std_readings]);
+        else:
+            self.Xi = numpy.array([float(a.strip()) for a in std_readings]);
+            
+        if self.medidor_dut.modelo == '182A':    
+            self.Yi = numpy.array([float(a.replace('NDCV','').strip()) for a in dut_readings]);
+        else:
+            self.Yi = numpy.array([float(a.strip()) for a in dut_readings]);
+            
+        self.nX_array = (self.Xi/self.X0 - 1) * self.k;
+        self.nY_array = (self.Yi/self.Y0 - 1) * self.k;
+
+        self.nX_media = numpy.mean(self.nX_array)
+        self.nX_desvio = numpy.std(self.nX_array, ddof=1)
+        self.nY_media = numpy.mean(self.nY_array)
+        self.nY_desvio = numpy.std(self.nY_array, ddof=1)
+        
+        return
+
+    def equilibrio(self):
+        dut_readings = []
+        self.fonte_ac.gpib.write("OUT "+str(freq)+" HZ");
+        self.fonte_dc.gpib.write("OUT {:.6f} V".format(v_nominal));
+        espera(5) # aguarda 5 segundos antes de iniciar equilibrio
+        
+        # Aplica o valor nominal
+        self.chave.gpib.write_raw(dc);
+        print("Vdc nominal: +{:.6f} V".format(v_nominal))
+        espera(wait_time/2);
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(0.999*v_nominal));
+        espera(wait_time/2);
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_dut.imprimir_dados(dut_readings)
+        # Aplica Vac - 0.1%
+        print("Vac nominal - 0.1%: +{:.6f} V".format(0.999*v_nominal))
+        self.chave.gpib.write_raw(ac);
+        espera(wait_time)
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_dut.imprimir_dados(dut_readings)
+        self.chave.gpib.write_raw(dc);
+        espera(2);
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(1.001*v_nominal));
+        espera(2);
+        # Aplica Vac + 0.1%
+        print("Vac nominal + 0.1%: +{:.6f} V".format(1.001*v_nominal))
+        self.chave.gpib.write_raw(ac);
+        espera(wait_time)
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_dut.imprimir_dados(dut_readings)
+        self.chave.gpib.write_raw(dc);
+        # cálculo do equilíbrio
+        yp = [0.999*v_nominal, 1.001*v_nominal]
+
+        if self.medidor_dut.modelo == '182A':
+            xp = [float(dut_readings[1].replace('NDCV','').strip()), float(dut_readings[2].replace('NDCV','').strip())]
+            xi = float(dut_readings[0].replace('NDCV','').strip())
+        else:
+            xp = [float(dut_readings[1].strip()), float(dut_readings[2].strip())]
+            xi = float(dut_readings[0].strip())
+        # calcula o valor de equilíbrio através de interpolação linear    
+        self.vac_atual = numpy.interp(xi,xp,yp);
+        self.adj_dc = v_nominal
+
+        if self.vac_atual > 1.1*v_nominal:  # verifica se a tensão AC de equilíbrio não é muito elevada
+            raise NameError('Tensão AC ajustada perigosamente alta!')
+        
+        return
+
+    def medir_acdc(self, ciclo_ac):
+        self.vdc_atual = self.adj_dc
+        # inicializa arrays de resultados
+        std_readings = []
+        dut_readings = []
+        # configuração da fonte AC
+        self.fonte_ac.gpib.write("OUT {:.6f} V".format(self.vac_atual))
+        self.fonte_ac.gpib.write("OUT "+str(freq)+" HZ")
+        # configuração da fonte DC
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(self.vdc_atual))
+        self.fonte_dc.gpib.write("OUT 0 HZ")
+        # Iniciar medição
+        espera(2); # esperar 2 segundos
+        # Ciclo AC
+        # testa se existem dados do último ciclo AC da medição anterior
+        if (ciclo_ac == []):
+            # caso negativo, medir AC normalmente
+            self.chave.gpib.write_raw(ac)
+            print("Ciclo AC")
+            espera(wait_time);
+            # leituras
+            std_readings.append(self.medidor_std.ler_dados())
+            dut_readings.append(self.medidor_dut.ler_dados())
+            self.medidor_std.imprimir_dados(std_readings)
+            self.medidor_dut.imprimir_dados(dut_readings)
+            self.medidor_std.mostrar_leituras(std_readings,'Ac1')
+            self.medidor_dut.mostrar_leituras(dut_readings,'Ac1')
+
+        else:
+            # caso positivo, aproveitar as medições do ciclo anterior
+            print("Ciclo AC")
+            std_readings.append(ciclo_ac[0])
+            dut_readings.append(ciclo_ac[1])
+            self.medidor_std.imprimir_dados(std_readings)
+            self.medidor_dut.imprimir_dados(dut_readings)
+            self.medidor_std.mostrar_leituras(std_readings,'Ac1')
+            self.medidor_dut.mostrar_leituras(dut_readings,'Ac1')
+
+        # Ciclo DC
+        self.chave.gpib.write_raw(dc);
+        print("Ciclo +DC")
+        espera(wait_time);
+
+        std_readings.append(self.medidor_std.ler_dados())
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_std.imprimir_dados(std_readings)
+        self.medidor_dut.imprimir_dados(dut_readings)
+        self.medidor_std.mostrar_leituras(std_readings,'Dcp')
+        self.medidor_dut.mostrar_leituras(dut_readings,'Dcp')
+
+        # Ciclo AC
+        self.chave.gpib.write_raw(ac);
+        print("Ciclo AC")
+        espera(wait_time/2);
+        # Mudar fonte DC para -DC
+        self.fonte_dc.gpib.write("OUT -{:.6f} V".format(self.vdc_atual));
+        espera(wait_time/2);
+
+        std_readings.append(self.medidor_std.ler_dados())
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_std.imprimir_dados(std_readings)
+        self.medidor_dut.imprimir_dados(dut_readings)
+        self.medidor_std.mostrar_leituras(std_readings,'Ac2')
+        self.medidor_dut.mostrar_leituras(dut_readings,'Ac2')
+
+        # Ciclo -DC
+        self.chave.gpib.write_raw(dc);
+        print("Ciclo -DC")
+        espera(wait_time);
+
+        std_readings.append(self.medidor_std.ler_dados())
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_std.imprimir_dados(std_readings)
+        self.medidor_dut.imprimir_dados(dut_readings)
+        self.medidor_std.mostrar_leituras(std_readings,'Dcm')
+        self.medidor_dut.mostrar_leituras(dut_readings,'Dcm')
+
+        # Ciclo AC
+        self.chave.gpib.write_raw(ac);
+        print("Ciclo AC")
+        espera(wait_time/2);
+        # Mudar fonte DC para +DC
+        self.fonte_dc.gpib.write("OUT +{:.6f} V".format(self.vdc_atual));
+        espera(wait_time/2);
+
+        std_readings.append(self.medidor_std.ler_dados())
+        dut_readings.append(self.medidor_dut.ler_dados())
+        self.medidor_std.imprimir_dados(std_readings)
+        self.medidor_dut.imprimir_dados(dut_readings)
+        self.medidor_std.mostrar_leituras(std_readings,'Ac3')
+        self.medidor_dut.mostrar_leituras(dut_readings,'Ac3')
+
+        # retorna as leituras obtidas para o objeto e para o padrão
+        self.measurements = {'std_readings':std_readings, 'dut_readings':dut_readings}
+        return
+
+    def calcular(self):
+        # x -> padrao; y -> objeto
+        print("Calculando diferença ac-dc...")
+
+        if self.medidor_std.modelo == '182A':
+            self.x = numpy.array([float(a.replace('NDCV','').strip()) for a in self.measurements['std_readings']]);
+        else:
+            self.x = numpy.array([float(a.strip()) for a in self.measurements['std_readings']]);
+        # extrai os dados de leitura do objeto
+
+        if self.medidor_dut.modelo == '182A':
+            self.y = numpy.array([float(a.replace('NDCV','').strip()) for a in self.measurements['dut_readings']])
+        else:
+            self.y = numpy.array([float(a.strip()) for a in self.measurements['dut_readings']])
+        # calcula Xac, Xdc, Yac e Ydc a partir das leituras brutas    
+        Xac = numpy.mean(numpy.array([self.x[0], self.x[2], self.x[4]]));     # AC médio padrão
+        Xdc = numpy.mean(numpy.array([self.x[1], self.x[3]]));           # DC médio padrão
+        Yac = numpy.mean(numpy.array([self.y[0], self.y[2], self.y[4]]));     # AC médio objeto
+        Ydc = numpy.mean(numpy.array([self.y[1], self.y[3]]));           # DC médio objeto
+        # Variáveis auxiliares X e Y
+        X = Xac/Xdc - 1;
+        Y = Yac/Ydc - 1;
+        # diferença AC-DC medida:
+        self.delta_m = 1e6 * ((X/self.nX_media - Y/self.nY_media)/(1 + Y/self.nY_media));
+        # critério para repetir a medição - diferença entre Yac e Ydc
+
+        if self.medidor_dut.modelo == '53132A':
+            self.Delta = Yac - Ydc;
+        elif self.medidor_dut.modelo == '3458A':
+            self.Delta = Yac - Ydc;
+        else:
+            self.Delta = 1e6 * (Yac - Ydc);
+
+        # ajuste da tensão DC para o próximo ciclo
+        self.adj_dc = self.vdc_atual * (1 + (Yac - Ydc)/(self.nY_media * Ydc));
+        
+        if self.adj_dc > 1.1*v_nominal:
+            raise NameError('Tensão DC ajustada perigosamente alta!') 
+
+        # timestamp de cada medição
+        date = datetime.datetime.now();
+        self.timestamp = datetime.datetime.strftime(date, '%d/%m/%Y %H:%M:%S');
+        return
+
+    def interromper(self):
+        self.chave.gpib.write_raw(reset);
+        espera(1)
+        self.fonte_ac.gpib.write("STBY");
+        self.fonte_dc.gpib.write("STBY");
+        return
+
+    def criar_registro(self):
+        date = datetime.datetime.now();
+        timestamp_file = datetime.datetime.strftime(date, '%d-%m-%Y_%Hh%Mm');
+        timestamp_registro = datetime.datetime.strftime(date, '%d/%m/%Y %H:%M:%S');
+        # o nome do registro é criado de forma automática, a partir da data e hora atuais
+        self.registro_filename = "registro_"+timestamp_file+".csv"
+        
+        with open(self.registro_filename,"w") as csvfile:
+            registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
+            registro.writerow(['pyAC-DC '+versao]);
+            registro.writerow(['Registro de Medições']);
+            registro.writerow([' ']);
+            registro.writerow(['Início da medição',timestamp_registro]);
+            registro.writerow(['Tempo de aquecimento [s]',config['Measurement Config']['aquecimento']]);
+            registro.writerow(['Tempo de estabilização [s]',config['Measurement Config']['wait_time']]);
+            registro.writerow(['Repetições',config['Measurement Config']['repeticoes']]);
+            registro.writerow(['Observações',config['Misc']['observacoes']]);
+            registro.writerow([' ']);
+            registro.writerow([' ']);
+        
+        csvfile.close();
+        return
+
+    def registrar_frequencia(self):
+        with open(self.registro_filename,"a") as csvfile:
+            registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
+            registro.writerow(['Tensão [V]',str(v_nominal).replace('.',',')]);
+            registro.writerow(['Frequência [kHz]',str(freq / 1000).replace('.',',')]);
+            registro.writerow([' ']); 
+            registro.writerow(['X0',str(self.X0).replace('.',',')]); 
+            registro.writerow(['Xi'] + [str(i).replace('.',',') for i in self.Xi]); 
+            registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); 
+            registro.writerow(['nX'] + [str(i).replace('.',',') for i in self.nX_array]); 
+            registro.writerow(['nX (média)',str(self.nX_media).replace('.',',')]); 
+            registro.writerow(['nX (desvio padrão)',str(self.nX_desvio).replace('.',',')]); 
+            registro.writerow([' ']); 
+            registro.writerow(['Y0',str(self.Y0).replace('.',',')]); 
+            registro.writerow(['Yi'] + [str(i).replace('.',',') for i in self.Yi]); 
+            registro.writerow(['k'] + [str(i).replace('.',',') for i in self.k]); 
+            registro.writerow(['nY'] + [str(i).replace('.',',') for i in self.nY_array]); 
+            registro.writerow(['nY (média)',str(self.nY_media).replace('.',',')]); 
+            registro.writerow(['nY (desvio padrão)',str(self.nY_desvio).replace('.',',')]); 
+            registro.writerow([' ']); 
+            registro.writerow(['Vac equilíbrio [V]',str(self.vac_atual).replace('.',',')]);
+            registro.writerow([' ']); 
+            # cabeçalho da tabela de medicao
+            registro.writerow(['Data / hora','AC (STD)','AC (DUT)','DC+ (STD)','DC+ (DUT)','AC (STD)','AC (DUT)','DC- (STD)','DC- (DUT)','AC (STD)','AC (DUT)', 'Diferença', 'Delta', 'Tensão DC Aplicada']);
+        csvfile.close();
+        return
+
+    def registrar_linha(self):
+
+        with open(self.registro_filename,"a") as csvfile:
+            registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
+            registro.writerow([self.timestamp,str(self.x[0]).replace('.',','),str(self.y[0]).replace('.',','),str(self.x[1]).replace('.',','),str(self.y[1]).replace('.',','),str(self.x[2]).replace('.',','),str(self.y[2]).replace('.',','),str(self.x[3]).replace('.',','),str(self.y[3]).replace('.',','),str(self.x[4]).replace('.',','),str(self.y[4]).replace('.',','),str(self.delta_m).replace('.',','),str(self.Delta).replace('.',','),str(self.vdc_atual).replace('.',',')]);
+
+        csvfile.close();
+        return
+
+    def registrar_media(self,diferenca):
+
+        with open(self.registro_filename,"a") as csvfile:
+            registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
+            registro.writerow([' ']);
+            registro.writerow(['Média',str(numpy.mean(diferenca)).replace('.',',')]);
+            registro.writerow(['Desvio-padrão',str(numpy.std(diferenca, ddof=1)).replace('.',',')]);
+            registro.writerow([' ']);
+            registro.writerow([' ']);
+        csvfile.close();
+        return
+    
+
 class Configuracoes(QWidget):
     def __init__(self):
         super(Configuracoes, self).__init__()
@@ -231,45 +661,30 @@ class Configuracoes(QWidget):
 
         self.leiturasGroupBox = QGroupBox("Leituras")
 
-        # labels
-        self.leiturasAc1Label = QLabel(self)
-        self.leiturasAc1Label.setText(" AC")
-        self.leiturasDcpLabel = QLabel(self)
-        self.leiturasDcpLabel.setText("+DC")
-        self.leiturasAc2Label = QLabel(self)
-        self.leiturasAc2Label.setText(" AC")
-        self.leiturasDcmLabel = QLabel(self)
-        self.leiturasDcmLabel.setText("-DC")
-        self.leiturasAc3Label = QLabel(self)
-        self.leiturasAc3Label.setText(" AC")
+        self.leiturasLabel = {}
+        self.leiturasPadrao = {}
+        self.leiturasObjeto = {}
+  
+        for i in ['Ac1','Dcp','Ac2','Dcm','Ac3']:
+            self.leiturasLabel[i] = QLabel(self)
+            self.leiturasPadrao[i] = QLineEdit(self)
+            self.leiturasPadrao[i].setReadOnly(True)
+            self.leiturasObjeto[i] = QLineEdit(self)
+            self.leiturasObjeto[i].setReadOnly(True)
+
+        self.leiturasLabel['Ac1'].setText(" AC")
+        self.leiturasLabel['Dcp'].setText("+DC")
+        self.leiturasLabel['Ac2'].setText(" AC")
+        self.leiturasLabel['Dcm'].setText("-DC")
+        self.leiturasLabel['Ac3'].setText(" AC")
 
         # padrao
         self.leiturasPadraoLabel = QLabel(self)
         self.leiturasPadraoLabel.setText("Padrão [mV]")
-        self.leiturasPadraoAc1 = QLineEdit(self)
-        self.leiturasPadraoAc1.setReadOnly(True)
-        self.leiturasPadraoAc2 = QLineEdit(self)
-        self.leiturasPadraoAc2.setReadOnly(True)
-        self.leiturasPadraoAc3 = QLineEdit(self)
-        self.leiturasPadraoAc3.setReadOnly(True)
-        self.leiturasPadraoDcp = QLineEdit(self)
-        self.leiturasPadraoDcp.setReadOnly(True)
-        self.leiturasPadraoDcm = QLineEdit(self)
-        self.leiturasPadraoDcm.setReadOnly(True)
 
         # objeto
         self.leiturasObjetoLabel = QLabel(self)
         self.leiturasObjetoLabel.setText("Objeto [mV]")
-        self.leiturasObjetoAc1 = QLineEdit(self)
-        self.leiturasObjetoAc1.setReadOnly(True)
-        self.leiturasObjetoAc2 = QLineEdit(self)
-        self.leiturasObjetoAc2.setReadOnly(True)
-        self.leiturasObjetoAc3 = QLineEdit(self)
-        self.leiturasObjetoAc3.setReadOnly(True)
-        self.leiturasObjetoDcp = QLineEdit(self)
-        self.leiturasObjetoDcp.setReadOnly(True)
-        self.leiturasObjetoDcm = QLineEdit(self)
-        self.leiturasObjetoDcm.setReadOnly(True)
 
         # tempo de espera
         self.esperaCounterLabel = QLabel(self)
@@ -307,27 +722,14 @@ class Configuracoes(QWidget):
 
         leiturasGroupBoxLayout.addWidget(self.leiturasPadraoLabel, 0, 1)
         leiturasGroupBoxLayout.addWidget(self.leiturasObjetoLabel, 0, 2)
+
+        j = 1
+        for i in ['Ac1','Dcp','Ac2','Dcm','Ac3']:
+            leiturasGroupBoxLayout.addWidget(self.leiturasLabel[i], j, 0)
+            leiturasGroupBoxLayout.addWidget(self.leiturasPadrao[i], j, 1)
+            leiturasGroupBoxLayout.addWidget(self.leiturasObjeto[i], j, 2)
+            j += 1
         
-        leiturasGroupBoxLayout.addWidget(self.leiturasAc1Label, 1, 0)
-        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoAc1, 1, 1)
-        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoAc1, 1, 2)
-        
-        leiturasGroupBoxLayout.addWidget(self.leiturasDcpLabel, 2, 0)
-        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoDcp, 2, 1)
-        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoDcp, 2, 2)
-
-        leiturasGroupBoxLayout.addWidget(self.leiturasAc2Label, 3, 0)
-        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoAc2, 3, 1)
-        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoAc2, 3, 2)
-
-        leiturasGroupBoxLayout.addWidget(self.leiturasDcmLabel, 4, 0)
-        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoDcm, 4, 1)
-        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoDcm, 4, 2)
-
-        leiturasGroupBoxLayout.addWidget(self.leiturasAc3Label, 5, 0)
-        leiturasGroupBoxLayout.addWidget(self.leiturasPadraoAc3, 5, 1)
-        leiturasGroupBoxLayout.addWidget(self.leiturasObjetoAc3, 5, 2)
-
         leiturasGroupBoxLayout.addItem(verticalSpacer)
 
         leiturasGroupBoxLayout.addWidget(self.esperaCounterLabel, 7, 0)
@@ -615,8 +1017,8 @@ class Configuracoes(QWidget):
 ##                self.saveScreenshot)
 
         self.quitConfig = self.createButton("Sair", self.close)
-        self.medir = self.createButton("Medir", self.close)
-        self.parar = self.createButton("Parar", self.close)
+        self.medir = self.createButton("Medir", self.iniciarMedicao)
+        self.parar = self.createButton("Parar", self.pararMedicao)
 
         self.buttonsLayout = QHBoxLayout()
         self.buttonsLayout.addStretch()
@@ -629,6 +1031,129 @@ class Configuracoes(QWidget):
         button.clicked.connect(member)
         return button
 
+    def pararMedicao(self):
+        try:
+            self.setup.interromper()
+        except:
+            QMessageBox.critical(self, "Erro",
+                "A medição não foi iniciada!",
+                QMessageBox.Abort)
+    
+    def iniciarMedicao(self):
+        try:
+            self.AC
+            self.DC
+            self.STD
+            self.DUT
+            self.SW
+        except:
+            QMessageBox.critical(self, "Erro",
+                "Os instrumentos não foram inicializados!",
+                QMessageBox.Abort)
+        else:
+            try:
+                global freq
+                freq_array = self.frequency.text().split(',')
+                v_nominal = self.voltage.text()
+                repeticoes = self.repeticoes.value()
+                wait_time = self.waitTime.value()
+                heating_time = self.repeticoesAquecimento.value()
+
+                # mostrar repeticoes e espera na interface gráfica
+                self.repeticoesTotal.setText(str(repeticoes))
+                self.esperaTotal.setText(str(wait_time))
+                
+                self.setup = Medicao(self.AC, self.DC, self.STD, self.DUT, self.SW)
+
+                print("Colocando fontes em OPERATE...")
+                self.setup.inicializar()
+                print("Criando arquivo de registro...")
+                self.setup.criar_registro()
+
+                print("Arquivo "+self.setup.registro_filename+" criado com sucesso!")
+
+                print("Tempo de aquecimento: "+str(heating_time)+" s")
+                print("Iniciando o aquecimento.")
+                self.setup.aquecimento(heating_time)  # inicia o aquecimento
+            
+                # fazer loop para cada valor de frequencia
+                for value in freq_array:
+                    freq = float(value) * 1000;
+
+                    print("Iniciando a medição...")
+                    print("V nominal: {:5.2f} V, f nominal: {:5.2f} Hz".format(v_nominal,freq));
+
+                    print("Medindo o N...")
+                    self.setup.medir_n(4)       # 4 repetições para o cálculo do N
+                
+                    print("N STD (média): {:5.2f}".format(self.setup.nX_media))
+                    print("N STD (desvio padrão): {:5.2f}".format(self.setup.nX_desvio))
+                    print("N DUT (média): {:5.2f}".format(self.setup.nY_media))
+                    print("N DUT (desvio padrão): {:5.2f}".format(self.setup.nY_desvio))
+
+                    # mostrar o valor do n na interface
+                    self.nPadrao.setText("{:5.2f}".format(self.setup.nX_media))
+                    self.nObjeto.setText("{:5.2f}".format(self.setup.nY_media))
+
+                    print("Equilibrio AC...")
+                    self.setup.equilibrio()
+                
+                    print("Vac aplicado: {:5.6f} V".format(self.setup.vac_atual))
+                
+                    self.setup.registrar_frequencia()     # inicia o registro para a frequencia atual
+                
+                            
+                    print("Iniciando medição...");
+                    first_measure = True;            # flag primeira repeticao
+                    diff_acdc = [];
+                    Delta = [];
+                
+                    i = 0;
+                    while (i < repeticoes):  # inicia as repetições da medição
+
+                        print ("Vdc aplicado: {:5.6f} V".format(self.setup.adj_dc))
+
+                        if first_measure:    # testa se é a primeira medição
+                            ciclo_ac = [];
+                            first_measure = False
+                        else:
+                            ciclo_ac = [self.setup.measurements['std_readings'][4], self.setup.measurements['dut_readings'][4]];  # caso não seja, aproveitar o último ciclo AC
+
+                        self.setup.medir_acdc(ciclo_ac)       # ciclo de medicao
+                        self.setup.calcular()                 # calcula da diferenca ac-dc
+
+                        print("Diferença ac-dc: {:5.2f}".format(self.setup.delta_m))               
+                        print("Delta: {:5.2f}".format(self.setup.Delta))
+                        print("Data / hora: "+self.setup.timestamp);
+
+                        if abs(self.setup.Delta) > 1:               # se o ponto não passa no critério de descarte, repetir medição
+                            print("Delta > 1. Ponto descartado!")
+                        else:
+                            diff_acdc.append(self.setup.delta_m)
+                            Delta.append(self.setup.Delta)
+                            self.setup.registrar_linha()
+                            i += 1;
+
+                        for i in ['Ac1','Dcp','Ac2','Dcm','Ac3']:
+                            self.leiturasPadrao[i].setText("")
+                            self.leiturasObjeto[i].setText("")
+                        
+                    print("Medição concluída.")                      
+                
+                    print("Resultados:")
+                    print("Média: {:5.2f}".format(numpy.mean(diff_acdc)))
+                    print("Desvio padrão: {:5.2f}".format(numpy.std(diff_acdc, ddof=1)))
+                    print("Salvando arquivo...")
+                    registrar_media(diff_acdc)
+
+                self.setup.interromper()
+                print("Concluído.")
+                    
+            except:
+                self.setup.interromper()
+                import traceback
+                traceback.print_exc()
+ 
 
 if __name__ == '__main__':
 
