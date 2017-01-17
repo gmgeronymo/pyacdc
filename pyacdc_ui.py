@@ -2,6 +2,9 @@
 
 import visa
 import datetime
+import time
+import numpy
+import csv
 from PyQt5.QtCore import QDir, Qt
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QFileDialog, QGridLayout,
         QGroupBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QSpinBox,
@@ -15,7 +18,23 @@ reset = chr(2)
 ac = chr(4)
 dc = chr(6)
 
+# inicializacao do módulo VISA
 rm = visa.ResourceManager()
+
+# variaveis globais dos instrumentos
+AC = None
+DC = None
+STD = None
+DUT = None
+SW = None
+
+# variáveis globais dos parâmetros
+freq_array = None
+freq = None
+v_nominal = None
+repeticoes = None
+wait_time = None
+heating_time = None
 
 def espera(segundos):
     for i in range(int(segundos * 10)):
@@ -104,9 +123,9 @@ class Medidor(Instrumento):
             self.idn = self.gpib.query("ID?");
             
         elif self.modelo == 'Keithley 182A':
-            self.gpib.write("R0I0B1X")
-            self.gpib.write("S2N1X")
-            self.gpib.write("O1P2X")
+            #self.gpib.write("R0I0B1X")
+            #self.gpib.write("S2N1X")
+            #self.gpib.write("O1P2X")
             self.idn = "Keithley 182A"
 
         elif self.modelo == 'Agilent 53132A':
@@ -221,6 +240,8 @@ class Medicao(object):
         self.chave = chave
 
     def inicializar(self):
+        print("OUT +{:.6f} V".format(v_nominal))
+        
         # configuração da fonte AC
         self.fonte_ac.gpib.write("OUT +{:.6f} V".format(v_nominal));
         self.fonte_ac.gpib.write("OUT 1000 HZ");
@@ -647,11 +668,11 @@ class Configuracoes(QWidget):
         self.waitTime.setValue(60)
         self.repeticoes.setValue(12)
         self.repeticoesAquecimento.setValue(8)
-
-        self.fonteAcEndereco.setValue(5)
-        self.fonteDcEndereco.setValue(13)
-        self.medidorStdEndereco.setValue(20)
-        self.medidorDutEndereco.setValue(21)
+        self.gpibBus.setValue(1)
+        self.fonteAcEndereco.setValue(2)
+        self.fonteDcEndereco.setValue(6)
+        self.medidorStdEndereco.setValue(11)
+        self.medidorDutEndereco.setValue(12)
         self.chaveEndereco.setValue(10)
 
         self.setWindowTitle("Configurações")
@@ -962,23 +983,29 @@ class Configuracoes(QWidget):
         self.instrumentosGroupBox.setLayout(instrumentosGroupBoxLayout)
 
     def controleRemoto(self, checkbox):
+        global AC
+        global DC
+        global STD
+        global DUT
+        global SW
         if checkbox.isChecked():
             try:
                 if checkbox.text() == "Fonte AC":
-                    self.AC = Fonte(str(self.gpibBus.value()),str(self.fonteAcEndereco.value()),self.fonteAcModelo.currentText(),'AC')
-                    self.fonteAcIdn.setText(self.AC.idn)
+                    AC = Fonte(str(self.gpibBus.value()),str(self.fonteAcEndereco.value()),self.fonteAcModelo.currentText(),'AC')
+                    self.fonteAcIdn.setText(AC.idn)
                 elif checkbox.text() == "Fonte DC":
-                    self.DC = Fonte(str(self.gpibBus.value()),str(self.fonteDcEndereco.value()),self.fonteDcModelo.currentText(),'DC')
-                    self.fonteDcIdn.setText(self.DC.idn)
+                    DC = Fonte(str(self.gpibBus.value()),str(self.fonteDcEndereco.value()),self.fonteDcModelo.currentText(),'DC')
+                    self.fonteDcIdn.setText(DC.idn)
                 elif checkbox.text() == "Medidor do Padrão":
-                    self.STD = Medidor(str(self.gpibBus.value()),str(self.medidorStdEndereco.value()),self.medidorStdModelo.currentText(),'STD')
-                    self.medidorStdIdn.setText(self.STD.idn)
+                    STD = Medidor(str(self.gpibBus.value()),str(self.medidorStdEndereco.value()),self.medidorStdModelo.currentText(),'STD')
+                    self.medidorStdIdn.setText(STD.idn)
                 elif checkbox.text() == "Medidor do Objeto":
-                    self.DUT = Medidor(str(self.gpibBus.value()),str(self.medidorDutEndereco.value()),self.medidorDutModelo.currentText(),'DUT')
-                    self.medidorDutIdn.setText(self.DUT.idn)
+                    DUT = Medidor(str(self.gpibBus.value()),str(self.medidorDutEndereco.value()),self.medidorDutModelo.currentText(),'DUT')
+                    self.medidorDutIdn.setText(DUT.idn)
                 elif checkbox.text() == "Chave AC/DC":
-                    self.SW = Chave(str(self.gpibBus.value()),str(self.chaveEndereco.value()),self.chaveModelo.currentText())
-                    self.chaveIdn.setText(self.SW.idn)
+                    SW = Chave(str(self.gpibBus.value()),str(self.chaveEndereco.value()),self.chaveModelo.currentText())
+                    self.chaveIdn.setText(SW.idn)
+                return
                     
             except:
                 QMessageBox.critical(self, "Erro",
@@ -988,25 +1015,27 @@ class Configuracoes(QWidget):
         else:
             try:
                 if checkbox.text() == "Fonte AC":
-                    self.AC.gpib.control_ren(0)
+                    AC.gpib.control_ren(0)
                     self.fonteAcIdn.setText("")
                 elif checkbox.text() == "Fonte DC":
-                    self.DC.gpib.control_ren(0)
+                    DC.gpib.control_ren(0)
                     self.fonteDcIdn.setText("")
                 elif checkbox.text() == "Medidor do Padrão":
-                    self.STD.gpib.control_ren(0)
+                    STD.gpib.control_ren(0)
                     self.medidorStdIdn.setText.setText("")
                 elif checkbox.text() == "Medidor do Objeto":
-                    self.DUT.gpib.control_ren(0)
+                    DUT.gpib.control_ren(0)
                     self.medidorDutIdn.setText("")
                 elif checkbox.text() == "Chave AC/DC":
-                    self.SW.gpib.control_ren(0)
+                    SW.gpib.control_ren(0)
                     self.chaveIdn.setText("")
+                return
             except:
                 #QMessageBox.critical(self, "Erro",
                 #"Erro ao conectar com o instrumento!",
                 #QMessageBox.Abort)
                 self.chaveIdn.setText("")
+        return
             
 
     def createButtonsLayout(self):
@@ -1033,126 +1062,153 @@ class Configuracoes(QWidget):
 
     def pararMedicao(self):
         try:
-            self.setup.interromper()
+            setup.interromper()
         except:
             QMessageBox.critical(self, "Erro",
                 "A medição não foi iniciada!",
                 QMessageBox.Abort)
+
+    def iniciarMedicao2(self):
+        global v_nominal
+        global AC
+        global DC
+        global STD
+        global DUT
+        global SW
+        print(AC.idn)
+        print(DC.idn)
+        print(STD.idn)
+        print(DUT.idn)
+        print(SW.idn)
+        setup = Medicao(AC, DC, STD, DUT, SW)
+        print(AC.gpib.query("*IDN?"))
+        v_nominal = float(self.voltage.text().strip())
+        print(v_nominal)
+        setup.inicializar()
+        
+        return
     
     def iniciarMedicao(self):
+        global AC
+        global DC
+        global STD
+        global DUT
+        global SW
+
+        global freq
+        global freq_array
+        global v_nominal
+        global repeticoes
+        global wait_time
+        global heating_time
+                    
+        freq_array = self.frequency.text().split(',')
+        v_nominal = float(self.voltage.text().strip())
+        repeticoes = int(self.repeticoes.value())
+        wait_time = int(self.waitTime.value())
+        heating_time = int(self.repeticoesAquecimento.value())
+
+        self.repeticoesTotal.setText(str(repeticoes))
+        self.esperaTotal.setText(str(wait_time))
+##        except:
+##            QMessageBox.critical(self, "Erro",
+##                "Os instrumentos não foram inicializados!",
+##                QMessageBox.Abort)
+##        else:
         try:
-            self.AC
-            self.DC
-            self.STD
-            self.DUT
-            self.SW
-        except:
-            QMessageBox.critical(self, "Erro",
-                "Os instrumentos não foram inicializados!",
-                QMessageBox.Abort)
-        else:
-            try:
-                global freq
-                freq_array = self.frequency.text().split(',')
-                v_nominal = self.voltage.text()
-                repeticoes = self.repeticoes.value()
-                wait_time = self.waitTime.value()
-                heating_time = self.repeticoesAquecimento.value()
+            # mostrar repeticoes e espera na interface gráfica
 
-                # mostrar repeticoes e espera na interface gráfica
-                self.repeticoesTotal.setText(str(repeticoes))
-                self.esperaTotal.setText(str(wait_time))
-                
-                self.setup = Medicao(self.AC, self.DC, self.STD, self.DUT, self.SW)
-
-                print("Colocando fontes em OPERATE...")
-                self.setup.inicializar()
-                print("Criando arquivo de registro...")
-                self.setup.criar_registro()
-
-                print("Arquivo "+self.setup.registro_filename+" criado com sucesso!")
-
-                print("Tempo de aquecimento: "+str(heating_time)+" s")
-                print("Iniciando o aquecimento.")
-                self.setup.aquecimento(heating_time)  # inicia o aquecimento
             
-                # fazer loop para cada valor de frequencia
-                for value in freq_array:
-                    freq = float(value) * 1000;
+            setup = Medicao(AC, DC, STD, DUT, SW)
 
-                    print("Iniciando a medição...")
-                    print("V nominal: {:5.2f} V, f nominal: {:5.2f} Hz".format(v_nominal,freq));
+            print("Colocando fontes em OPERATE...")
 
-                    print("Medindo o N...")
-                    self.setup.medir_n(4)       # 4 repetições para o cálculo do N
-                
-                    print("N STD (média): {:5.2f}".format(self.setup.nX_media))
-                    print("N STD (desvio padrão): {:5.2f}".format(self.setup.nX_desvio))
-                    print("N DUT (média): {:5.2f}".format(self.setup.nY_media))
-                    print("N DUT (desvio padrão): {:5.2f}".format(self.setup.nY_desvio))
+            setup.inicializar()
+            print("Criando arquivo de registro...")
+            setup.criar_registro()
 
-                    # mostrar o valor do n na interface
-                    self.nPadrao.setText("{:5.2f}".format(self.setup.nX_media))
-                    self.nObjeto.setText("{:5.2f}".format(self.setup.nY_media))
+            print("Arquivo "+setup.registro_filename+" criado com sucesso!")
 
-                    print("Equilibrio AC...")
-                    self.setup.equilibrio()
-                
-                    print("Vac aplicado: {:5.6f} V".format(self.setup.vac_atual))
-                
-                    self.setup.registrar_frequencia()     # inicia o registro para a frequencia atual
-                
-                            
-                    print("Iniciando medição...");
-                    first_measure = True;            # flag primeira repeticao
-                    diff_acdc = [];
-                    Delta = [];
-                
-                    i = 0;
-                    while (i < repeticoes):  # inicia as repetições da medição
+            print("Tempo de aquecimento: "+str(heating_time)+" s")
+            print("Iniciando o aquecimento.")
+            setup.aquecimento(heating_time)  # inicia o aquecimento
+                    
+            # fazer loop para cada valor de frequencia
+            for value in freq_array:
+                freq = float(value) * 1000;
 
-                        print ("Vdc aplicado: {:5.6f} V".format(self.setup.adj_dc))
+                print("Iniciando a medição...")
+                print("V nominal: {:5.2f} V, f nominal: {:5.2f} Hz".format(v_nominal,freq));
 
-                        if first_measure:    # testa se é a primeira medição
-                            ciclo_ac = [];
-                            first_measure = False
-                        else:
-                            ciclo_ac = [self.setup.measurements['std_readings'][4], self.setup.measurements['dut_readings'][4]];  # caso não seja, aproveitar o último ciclo AC
-
-                        self.setup.medir_acdc(ciclo_ac)       # ciclo de medicao
-                        self.setup.calcular()                 # calcula da diferenca ac-dc
-
-                        print("Diferença ac-dc: {:5.2f}".format(self.setup.delta_m))               
-                        print("Delta: {:5.2f}".format(self.setup.Delta))
-                        print("Data / hora: "+self.setup.timestamp);
-
-                        if abs(self.setup.Delta) > 1:               # se o ponto não passa no critério de descarte, repetir medição
-                            print("Delta > 1. Ponto descartado!")
-                        else:
-                            diff_acdc.append(self.setup.delta_m)
-                            Delta.append(self.setup.Delta)
-                            self.setup.registrar_linha()
-                            i += 1;
-
-                        for i in ['Ac1','Dcp','Ac2','Dcm','Ac3']:
-                            self.leiturasPadrao[i].setText("")
-                            self.leiturasObjeto[i].setText("")
+                print("Medindo o N...")
+                setup.medir_n(4)       # 4 repetições para o cálculo do N
                         
-                    print("Medição concluída.")                      
-                
-                    print("Resultados:")
-                    print("Média: {:5.2f}".format(numpy.mean(diff_acdc)))
-                    print("Desvio padrão: {:5.2f}".format(numpy.std(diff_acdc, ddof=1)))
-                    print("Salvando arquivo...")
-                    registrar_media(diff_acdc)
+                print("N STD (média): {:5.2f}".format(setup.nX_media))
+                print("N STD (desvio padrão): {:5.2f}".format(setup.nX_desvio))
+                print("N DUT (média): {:5.2f}".format(setup.nY_media))
+                print("N DUT (desvio padrão): {:5.2f}".format(setup.nY_desvio))
 
-                self.setup.interromper()
+                # mostrar o valor do n na interface
+                self.nPadrao.setText("{:5.2f}".format(setup.nX_media))
+                self.nObjeto.setText("{:5.2f}".format(setup.nY_media))
+
+                print("Equilibrio AC...")
+                setup.equilibrio()
+                        
+                print("Vac aplicado: {:5.6f} V".format(setup.vac_atual))
+                        
+                setup.registrar_frequencia()     # inicia o registro para a frequencia atual
+                        
+                print("Iniciando medição...");
+                first_measure = True;            # flag primeira repeticao
+                diff_acdc = [];
+                Delta = [];
+                        
+                i = 0;
+                while (i < repeticoes):  # inicia as repetições da medição
+
+                    print ("Vdc aplicado: {:5.6f} V".format(setup.adj_dc))
+
+                    if first_measure:    # testa se é a primeira medição
+                        ciclo_ac = [];
+                        first_measure = False
+                    else:
+                        ciclo_ac = [setup.measurements['std_readings'][4], setup.measurements['dut_readings'][4]];  # caso não seja, aproveitar o último ciclo AC
+
+                    setup.medir_acdc(ciclo_ac)       # ciclo de medicao
+                    setup.calcular()                 # calcula da diferenca ac-dc
+
+                    print("Diferença ac-dc: {:5.2f}".format(setup.delta_m))               
+                    print("Delta: {:5.2f}".format(setup.Delta))
+                    print("Data / hora: "+setup.timestamp);
+
+                    if abs(setup.Delta) > 1:               # se o ponto não passa no critério de descarte, repetir medição
+                        print("Delta > 1. Ponto descartado!")
+                    else:
+                        diff_acdc.append(setup.delta_m)
+                        Delta.append(setup.Delta)
+                        setup.registrar_linha()
+                        i += 1;
+
+                    for i in ['Ac1','Dcp','Ac2','Dcm','Ac3']:
+                        self.leiturasPadrao[i].setText("")
+                        self.leiturasObjeto[i].setText("")
+                                
+                print("Medição concluída.")                      
+                        
+                print("Resultados:")
+                print("Média: {:5.2f}".format(numpy.mean(diff_acdc)))
+                print("Desvio padrão: {:5.2f}".format(numpy.std(diff_acdc, ddof=1)))
+                print("Salvando arquivo...")
+                registrar_media(diff_acdc)
+
+                setup.interromper()
                 print("Concluído.")
                     
-            except:
-                self.setup.interromper()
-                import traceback
-                traceback.print_exc()
+        except:
+            self.setup.interromper()
+            import traceback
+            traceback.print_exc()
  
 
 if __name__ == '__main__':
