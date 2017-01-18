@@ -5,6 +5,7 @@ import datetime
 import time
 import numpy
 import csv
+
 from PyQt5.QtCore import QDir, Qt
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QFileDialog, QGridLayout,
         QGroupBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QSpinBox,
@@ -38,7 +39,8 @@ heating_time = None
 
 def espera(segundos):
     for i in range(int(segundos * 10)):
-        time.sleep(0.1)    
+        time.sleep(0.1)
+        app.processEvents()
     return
 
 class Instrumento(object):
@@ -233,6 +235,13 @@ class Medicao(object):
     """
 
     def __init__(self, fonte_ac, fonte_dc, medidor_std, medidor_dut, chave):
+        # checar se os instrumentos estao inicializados
+        fonte_ac.idn
+        fonte_dc.idn
+        medidor_std.idn
+        medidor_dut.idn
+        chave.idn
+        # inicilizar a classe
         self.fonte_ac = fonte_ac
         self.fonte_dc = fonte_dc
         self.medidor_std = medidor_std
@@ -240,7 +249,6 @@ class Medicao(object):
         self.chave = chave
 
     def inicializar(self):
-        print("OUT +{:.6f} V".format(v_nominal))
         
         # configuração da fonte AC
         self.fonte_ac.gpib.write("OUT +{:.6f} V".format(v_nominal));
@@ -1011,33 +1019,40 @@ class Configuracoes(QWidget):
                 QMessageBox.critical(self, "Erro",
                 "Erro ao conectar com o instrumento!",
                 QMessageBox.Abort)
-                
-        else:
-            try:
-                if checkbox.text() == "Fonte AC":
-                    AC.gpib.control_ren(0)
-                    self.fonteAcIdn.setText("")
-                elif checkbox.text() == "Fonte DC":
-                    DC.gpib.control_ren(0)
-                    self.fonteDcIdn.setText("")
-                elif checkbox.text() == "Medidor do Padrão":
-                    STD.gpib.control_ren(0)
-                    self.medidorStdIdn.setText.setText("")
-                elif checkbox.text() == "Medidor do Objeto":
-                    DUT.gpib.control_ren(0)
-                    self.medidorDutIdn.setText("")
-                elif checkbox.text() == "Chave AC/DC":
-                    SW.gpib.control_ren(0)
-                    self.chaveIdn.setText("")
-                return
-            except:
-                #QMessageBox.critical(self, "Erro",
-                #"Erro ao conectar com o instrumento!",
-                #QMessageBox.Abort)
-                self.chaveIdn.setText("")
-        return
-            
 
+        else:
+            if checkbox.text() == "Fonte AC":
+                self.fonteAcIdn.setText("")
+                try:
+                    AC.gpib.control_ren(0)
+                except:
+                    pass
+            elif checkbox.text() == "Fonte DC":
+                self.fonteDcIdn.setText("")
+                try:
+                    DC.gpib.control_ren(0)
+                except:
+                    pass
+            elif checkbox.text() == "Medidor do Padrão":
+                self.medidorStdIdn.setText.setText("")
+                try:
+                    STD.gpib.control_ren(0)
+                except:
+                    pass
+            elif checkbox.text() == "Medidor do Objeto":
+                self.medidorDutIdn.setText("")
+                try:
+                    DUT.gpib.control_ren(0)
+                except:
+                    pass
+            elif checkbox.text() == "Chave AC/DC":
+                self.chaveIdn.setText("")
+                try:
+                    SW.gpib.control_ren(0)
+                except:
+                    pass
+        return
+        
     def createButtonsLayout(self):
 ##        self.newScreenshotButton = self.createButton("New Screenshot",
 ##                self.newScreenshot)
@@ -1062,43 +1077,41 @@ class Configuracoes(QWidget):
 
     def pararMedicao(self):
         try:
-            setup.interromper()
+                self.setup.interromper()
+                import traceback
+                traceback.print_exc()
         except:
-            QMessageBox.critical(self, "Erro",
+                QMessageBox.critical(self, "Erro",
                 "A medição não foi iniciada!",
                 QMessageBox.Abort)
-
+        
     def iniciarMedicao(self):
+        # variaveis globais - instrumentos
         global AC
         global DC
         global STD
         global DUT
         global SW
-
+        # variaveis globais - parametros
         global freq
         global freq_array
         global v_nominal
         global repeticoes
         global wait_time
         global heating_time
-                    
+        # associar valores aos parametros
         freq_array = self.frequency.text().split(',')
         v_nominal = float(self.voltage.text().strip())
         repeticoes = int(self.repeticoes.value())
         wait_time = int(self.waitTime.value())
         heating_time = int(self.repeticoesAquecimento.value())
 
+        # mostrar repeticoes e espera na interface gráfica
         self.repeticoesTotal.setText(str(repeticoes))
         self.esperaTotal.setText(str(wait_time))
-##        except:
-##            QMessageBox.critical(self, "Erro",
-##                "Os instrumentos não foram inicializados!",
-##                QMessageBox.Abort)
-##        else:
-        try:
-            # mostrar repeticoes e espera na interface gráfica
 
-            
+        try:
+
             setup = Medicao(AC, DC, STD, DUT, SW)
 
             print("Colocando fontes em OPERATE...")
@@ -1186,9 +1199,7 @@ class Configuracoes(QWidget):
                 print("Concluído.")
                     
         except:
-            self.setup.interromper()
-            import traceback
-            traceback.print_exc()
+            self.pararMedicao()
 
         return
  
