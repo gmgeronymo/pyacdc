@@ -44,7 +44,6 @@ import datetime
 import configparser
 import time
 import numpy
-import datetime
 import csv
 # classes abstratas:
 from abc import ABCMeta, abstractmethod
