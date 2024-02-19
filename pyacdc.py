@@ -5,7 +5,7 @@
 # Autor:       Gean Marcos Geronymo
 #
 # Versão inicial:      10-Jun-2016
-# Última modificação:  04-Nov-2016
+# Última modificação:  25-Jul-2022
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -34,16 +34,19 @@
 # chr(argumento) converte o valor binario em ascii
 #-------------------------------------------------------------------------------
 # versão do programa
-versao = '0.4';
+versao = '0.5';
 #-------------------------------------------------------------------------------
 # Carregar módulos
-import visa
+import pyvisa as visa
 import datetime
 import configparser
 import time
 import numpy
 import datetime
 import csv
+# condicoes ambientais - bme280
+import smbus2
+import bme280
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -62,7 +65,7 @@ config = configparser.ConfigParser() # iniciar o objeto config
 config.read('config.ini') # ler o arquivo de configuracao
 wait_time = int(config['Measurement Config']['wait_time']); # tempo de espera
 heating_time = int(config['Measurement Config']['aquecimento']); # tempo de aquecimento
-rm = visa.ResourceManager()
+rm = visa.ResourceManager('@py')
 repeticoes = int(config['Measurement Config']['repeticoes']); # quantidade de repetições
 vac_nominal = float(config['Measurement Config']['voltage']); # Tensão nominal AC
 vdc_nominal = float(config['Measurement Config']['voltage']); # Tensão nominal DC
@@ -83,6 +86,22 @@ def espera(segundos):
         time.sleep(0.1)    
     return
 #-------------------------------------------------------------------------------
+# inicializar bme280
+def bme280_init():
+    global port;
+    port = 1;
+    global address;
+    address = 0x76;
+    global bus;
+    bus = smbus2.SMBus(port);
+    global calibration_params;
+    calibration_params = bme280.load_calibration_params(bus, address)
+
+    return
+
+def bme280_read():
+    return bme280.sample(bus, address, calibration_params)
+
 # função instrument_init()
 # inicializa a comunicação com os instrumentos, via GPIB
 def instrument_init():
@@ -121,8 +140,10 @@ def instrument_init():
         # N1 = filters on
         # O1 = analog filter on
         # P2 = digital filter medium response
+        std.write("X")
+        #std.write("R0I0B1S2N1O1P2X")
         std.write("R0I0B1X")
-        std.write("S2N1X")
+        #std.write("S2N1X")
         std.write("O1P2X")
         print("Keithley 182A...\n")
         print("OK!\n");
@@ -131,8 +152,8 @@ def instrument_init():
         counter_init(std);
         print("OK!\n");
     elif config['Instruments']['std'] == '2182A':
-        std.write("SENS:CHAN 2")
-        std.write(":SENS:VOLT:CHAN2:RANG:AUTO ON")
+        std.write("SENS:CHAN 1")
+        std.write(":SENS:VOLT:CHAN1:RANG:AUTO ON")
         std.write(":SENS:VOLT:NPLC 18")
         std.write(":SENS:VOLT:DIG 8")
         print(std.query("*IDN?"));
@@ -151,8 +172,9 @@ def instrument_init():
         print(dut.query("ID?"))
         print("OK!\n");
     elif config['Instruments']['dut'] == '182A':
+        dut.write("X")
         dut.write("R0I0B1X")
-        dut.write("S2N1X")
+        #dut.write("S2N1X")
         dut.write("O1P2X")
         print("Keithley 182A...\n")
         print("OK!\n");
@@ -161,7 +183,8 @@ def instrument_init():
         counter_init(dut);
         print("OK!\n");
     elif config['Instruments']['dut'] == '2182A':
-        dut.write(":SENS:VOLT:CHAN2:RANG:AUTO")
+        dut.write("SENS:CHAN 1")
+        dut.write(":SENS:VOLT:CHAN1:RANG:AUTO ON")
         dut.write(":SENS:VOLT:NPLC 18")
         dut.write(":SENS:VOLT:DIG 8")
         print(dut.query("*IDN?"));
@@ -215,6 +238,8 @@ def meas_init():
     # configuração da fonte DC
     dc_source.write("OUT +{:.6f} V".format(vdc_nominal));
     dc_source.write("OUT 0 HZ");
+    # AC-AC
+    #dc_source.write("OUT 1000 HZ");
     # Entrar em OPERATE
     espera(2); # esperar 2 segundos
     ac_source.write("*CLS");
@@ -289,6 +314,8 @@ def aquecimento(tempo):
     # (em segundos) definido na variavel "tempo"
     dc_source.write("OUT +{:.6f} V".format(vdc_nominal));
     dc_source.write("OUT 0 HZ");
+    # AC-AC
+    #dc_source.write("OUT 1000 HZ");
     sw.write_raw(dc);
     espera(tempo);
     return
@@ -406,6 +433,8 @@ def measure(vdc_atual,vac_atual,ciclo_ac):
     # configuração da fonte DC
     dc_source.write("OUT +{:.6f} V".format(vdc_atual));
     dc_source.write("OUT 0 HZ");
+    # ac-ac
+    #dc_source.write("OUT 1000 HZ");
     # Iniciar medição
     espera(2); # esperar 2 segundos
     # Ciclo AC
@@ -631,7 +660,7 @@ def registro_frequencia(registro_filename,frequencia,n_array,vac_equilibrio):
         registro.writerow(['Vac equilíbrio [V]',str(vac_equilibrio).replace('.',',')]); # Vac calculado para o equilíbrio
         registro.writerow([' ']); # pular linha
         # cabeçalho da tabela de medicao
-        registro.writerow(['Data / hora','AC (STD)','AC (DUT)','DC+ (STD)','DC+ (DUT)','AC (STD)','AC (DUT)','DC- (STD)','DC- (DUT)','AC (STD)','AC (DUT)', 'Diferença', 'Delta', 'Tensão DC Aplicada']);
+        registro.writerow(['Data / hora','AC (STD)','AC (DUT)','DC+ (STD)','DC+ (DUT)','AC (STD)','AC (DUT)','DC- (STD)','DC- (DUT)','AC (STD)','AC (DUT)', 'Diferença', 'Delta', 'Tensão DC Aplicada','Temperatura [ºC]', 'Umidade Relativa [% u.r.]', 'Pressão Atmosférica [hPa]']);
     csvfile.close();
     return
 #-------------------------------------------------------------------------------
@@ -641,11 +670,11 @@ def registro_frequencia(registro_filename,frequencia,n_array,vac_equilibrio):
 # registro_filename - o nome do registro criado com a função criar_registro()
 # results - array com os resultados
 # vdc_atual - tensão DC calculada para a medição atual
-def registro_linha(registro_filename,results,vdc_atual):
+def registro_linha(registro_filename,results,vdc_atual,ca_data):
     # results -> results['std_readings'], results['dut_readings'], results['dif'], results['Delta'], results['adj_dc'] e results['timestamp']
     with open(registro_filename,"a") as csvfile:
         registro = csv.writer(csvfile, delimiter=';',lineterminator='\n')
-        registro.writerow([results['timestamp'],str(results['std_readings'][0]).replace('.',','),str(results['dut_readings'][0]).replace('.',','),str(results['std_readings'][1]).replace('.',','),str(results['dut_readings'][1]).replace('.',','),str(results['std_readings'][2]).replace('.',','),str(results['dut_readings'][2]).replace('.',','),str(results['std_readings'][3]).replace('.',','),str(results['dut_readings'][3]).replace('.',','),str(results['std_readings'][4]).replace('.',','),str(results['dut_readings'][4]).replace('.',','),str(results['dif']).replace('.',','),str(results['Delta']).replace('.',','),str(vdc_atual).replace('.',',')]);
+        registro.writerow([results['timestamp'],str(results['std_readings'][0]).replace('.',','),str(results['dut_readings'][0]).replace('.',','),str(results['std_readings'][1]).replace('.',','),str(results['dut_readings'][1]).replace('.',','),str(results['std_readings'][2]).replace('.',','),str(results['dut_readings'][2]).replace('.',','),str(results['std_readings'][3]).replace('.',','),str(results['dut_readings'][3]).replace('.',','),str(results['std_readings'][4]).replace('.',','),str(results['dut_readings'][4]).replace('.',','),str(results['dif']).replace('.',','),str(results['Delta']).replace('.',','),str(vdc_atual).replace('.',','),str(ca_data.temperature).replace('.',','),str(ca_data.humidity).replace('.',','),str(ca_data.pressure).replace('.',',')]);
 
     csvfile.close();
     return
@@ -674,6 +703,8 @@ def registro_media(registro_filename,diferenca):
 def main():
     try:
         global freq;
+        print("Inicializando BME280 (condições ambientais)")
+        bme280_init()
         print("Inicializando os intrumentos...")
         instrument_init()  # inicializa os instrumentos
         print("Colocando fontes em OPERATE...")
@@ -721,12 +752,16 @@ def main():
                 print("Diferença ac-dc: {:5.2f}".format(results['dif']))               
                 print("Delta: {:5.2f}".format(results['Delta']))
                 print("Data / hora: "+results['timestamp']);
-                if abs(results['Delta']) > 1:               # se o ponto não passa no critério de descarte, repetir medição
-                    print("Delta > 1. Ponto descartado!")
+                ca_data = bme280_read();
+                print("Temperatura: "+str(ca_data.temperature)+" ºC");
+                print("Umidade Relativa: "+str(ca_data.humidity)+" %u.r.");
+                print("Pressão atmosférica: "+str(ca_data.pressure)+" hPa");
+                if abs(results['Delta']) > 50:               # se o ponto não passa no critério de descarte, repetir medição
+                    print("Delta > 50. Ponto descartado!")
                 else:
                     diff_acdc.append(results['dif']);
                     Delta.append(results['Delta']);
-                    registro_linha(filename,results,vdc_atual);
+                    registro_linha(filename,results,vdc_atual,ca_data);
                     i += 1;               
                 vdc_atual = results['adj_dc'];              # aplica o ajuste DC
                 if vdc_atual > 1.1*vdc_nominal:
